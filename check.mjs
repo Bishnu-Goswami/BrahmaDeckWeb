@@ -1,0 +1,646 @@
+import { GoogleGenAI } from "https://esm.sh/@google/genai?bundle";
+import PptxGenJS from "https://esm.sh/pptxgenjs?bundle";
+import { jsPDF } from "https://esm.sh/jspdf?bundle";
+
+const STORAGE_KEY = "brahmadeck-web-settings-v1";
+const SLIDE_W = 1600;
+const SLIDE_H = 900;
+const PPTX_W = 13.333;
+const PPTX_H = 7.5;
+
+const THEMES = {
+  "Academic Default": { bg: "F7F9FC", title: "17375E", body: "202020", accent: "2F5A9E", body_fill: "FFFFFF", sidebar: "EFF4FA", title_font: "Cambria", body_font: "Noto Sans" },
+  "Clean Minimal": { bg: "FFFFFF", title: "1F2937", body: "222222", accent: "64748B", body_fill: "FAFAFA", sidebar: "F5F7FA", title_font: "Calibri", body_font: "Noto Sans" },
+  "Blue Lecture": { bg: "EDF4FF", title: "123A63", body: "1F2937", accent: "3A7EBF", body_fill: "FFFFFF", sidebar: "DDEBFB", title_font: "Aptos Display", body_font: "Noto Sans" },
+  "Green Board": { bg: "EEF8F0", title: "184E3D", body: "183024", accent: "2E8B57", body_fill: "FBFFF9", sidebar: "E0F1E6", title_font: "Georgia", body_font: "Noto Sans" },
+  "Sepia Seminar": { bg: "FBF4E9", title: "5A4322", body: "3A2E22", accent: "9A6A2F", body_fill: "FFF9F0", sidebar: "F5EBDD", title_font: "Times New Roman", body_font: "Noto Sans" },
+  "Slate Lecture": { bg: "F2F5F9", title: "25364B", body: "283548", accent: "51657A", body_fill: "FFFFFF", sidebar: "E6EBF2", title_font: "Aptos Display", body_font: "Noto Sans" },
+  "Dark Lecture": { bg: "0F172A", title: "F8FAFC", body: "E2E8F0", accent: "38BDF8", body_fill: "111827", sidebar: "1E293B", title_font: "Aptos Display", body_font: "Noto Sans" }
+};
+
+const FONT_PRESETS = {
+  "Academic Sans": { title_font: "Noto Sans", body_font: "Noto Sans" },
+  "Academic Serif": { title_font: "Georgia", body_font: "Georgia" },
+  "Classic Serif": { title_font: "Times New Roman", body_font: "Times New Roman" },
+  "Modern Sans": { title_font: "Arial", body_font: "Arial" },
+  "Lecture Sans": { title_font: "Trebuchet MS", body_font: "Trebuchet MS" },
+  "Mono Notes": { title_font: "Consolas", body_font: "Consolas" }
+};
+
+const els = Object.fromEntries([...document.querySelectorAll("[id]")].map(el => [el.id, el]));
+const ctx = els.renderCanvas.getContext("2d");
+const state = { slides: [], topic: "", busy: false, settings: {} };
+
+for (const key of Object.keys(THEMES)) els.theme.add(new Option(key, key));
+for (const key of Object.keys(FONT_PRESETS)) els.font.add(new Option(key, key));
+
+function esc(text) {
+  return String(text)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function stamp() {
+  const d = new Date();
+  const month = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getMonth()];
+  return `${d.getDate()}${month}${String(d.getFullYear()).slice(-2)}`;
+}
+
+function filename(topic, ext) {
+  const short = String(topic || "Lecture").replace(/[\\/:*?"<>|]+/g, "").trim().slice(0, 20).replace(/\s+/g, "_") || "Lecture";
+  return `${short}_${stamp()}.${ext}`;
+}
+
+function log(message) {
+  els.log.textContent += `\n[${new Date().toLocaleTimeString()}] ${message}`;
+  els.log.scrollTop = els.log.scrollHeight;
+}
+
+function setStatus(kind, text) {
+  els.status.innerHTML = `<span class="pill">${esc(kind)}</span><span id="statusText">${esc(text)}</span>`;
+}
+
+function collect() {
+  return {
+    apiKey: els.apiKey.value.trim(),
+    model: els.model.value,
+    topic: els.topic.value.trim(),
+    language: els.language.value,
+    level: els.level.value,
+    density: Number(els.density.value),
+    slides: Number(els.slides.value),
+    words: Number(els.words.value),
+    theme: els.theme.value,
+    font: els.font.value,
+    autoPptx: els.autoPptx.checked,
+    autoPdf: els.autoPdf.checked,
+    typeTable: els.typeTable.checked,
+    typeBoxes: els.typeBoxes.checked,
+    openPdf: els.openPdf.checked,
+  };
+}
+
+function load() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+    state.settings = saved && typeof saved === "object" ? saved : {};
+  } catch {
+    state.settings = {};
+  }
+}
+
+function save() {
+  state.settings = collect();
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state.settings));
+}
+
+function applySettings() {
+  els.apiKey.value = state.settings.apiKey || "";
+  els.model.value = state.settings.model || "gemini-3-flash-preview";
+  els.topic.value = state.settings.topic || "";
+  els.language.value = state.settings.language || "English";
+  els.level.value = state.settings.level || "High School";
+  els.density.value = String(state.settings.density ?? 2);
+  els.slides.value = String(state.settings.slides ?? 6);
+  els.words.value = String(state.settings.words ?? 70);
+  els.theme.value = state.settings.theme || "Academic Default";
+  els.font.value = state.settings.font || "Academic Sans";
+  els.autoPptx.checked = state.settings.autoPptx ?? true;
+  els.autoPdf.checked = state.settings.autoPdf ?? true;
+  els.typeTable.checked = state.settings.typeTable ?? true;
+  els.typeBoxes.checked = state.settings.typeBoxes ?? true;
+  els.openPdf.checked = state.settings.openPdf ?? true;
+  document.documentElement.style.setProperty("--accent", `#${(THEMES[els.theme.value] || THEMES["Academic Default"]).accent}`);
+}
+
+function rr(c, x, y, w, h, r, fill, stroke, lw = 1) {
+  const n = Math.min(r, w / 2, h / 2);
+  c.beginPath();
+  c.moveTo(x + n, y);
+  c.arcTo(x + w, y, x + w, y + h, n);
+  c.arcTo(x + w, y + h, x, y + h, n);
+  c.arcTo(x, y + h, x, y, n);
+  c.arcTo(x, y, x + w, y, n);
+  c.closePath();
+  if (fill) { c.fillStyle = fill; c.fill(); }
+  if (stroke) { c.strokeStyle = stroke; c.lineWidth = lw; c.stroke(); }
+}
+
+function wrap(c, text, font, maxW) {
+  c.font = font;
+  const words = String(text || "").split(/\s+/).filter(Boolean);
+  if (!words.length) return [""];
+  const lines = [];
+  let current = words[0];
+  for (let i = 1; i < words.length; i++) {
+    const test = `${current} ${words[i]}`;
+    if (c.measureText(test).width <= maxW) current = test;
+    else { lines.push(current); current = words[i]; }
+  }
+  lines.push(current);
+  return lines;
+}
+
+function fit(c, text, fontFamily, maxW, maxH, start, min = 12, bold = false) {
+  let lo = min, hi = start, best = min;
+  while (lo <= hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    const font = `${bold ? 700 : 400} ${mid}px ${fontFamily}`;
+    const lines = wrap(c, text, font, maxW);
+    const height = lines.length * mid * 1.28;
+    const width = Math.max(...lines.map(line => {
+      c.font = font;
+      return c.measureText(line).width;
+    }), 0);
+    if (width <= maxW && height <= maxH) {
+      best = mid;
+      lo = mid + 1;
+    } else {
+      hi = mid - 1;
+    }
+  }
+  return best;
+}
+
+function drawText(c, text, x, y, maxW, lineH, family, size, color, bold = false) {
+  c.fillStyle = color;
+  c.font = `${bold ? 700 : 400} ${size}px ${family}`;
+  c.textBaseline = "top";
+  const lines = wrap(c, text, c.font, maxW);
+  let yy = y;
+  for (const line of lines) {
+    c.fillText(line, x, yy);
+    yy += lineH;
+  }
+  return yy;
+}
+
+function normalizeRows(rows, title) {
+  const out = [];
+  for (const r of rows || []) {
+    if (Array.isArray(r)) {
+      const cells = r.slice(0, 3).map(v => String(v || ""));
+      while (cells.length < 3) cells.push("");
+      out.push(cells);
+    } else if (r && typeof r === "object") {
+      out.push([
+        String(r.aspect || r.name || title || ""),
+        String(r.detail || r.value || r.description || ""),
+        String(r.cue || r.note || r.hint || "")
+      ]);
+    }
+  }
+  return out.length ? out : [[title, title, title]];
+}
+
+function normalizeWords(items) {
+  const out = [];
+  for (const i of items || []) {
+    const t = typeof i === "object" && i ? (i.word || i.label || i.text || i.name || "") : String(i || "");
+    if (String(t).trim()) out.push(String(t).trim());
+  }
+  return out.length ? out : ["Key idea", "Example", "Application", "Review"];
+}
+
+function pickVariant(slide, idx) {
+  const selected = [];
+  if (els.typeTable.checked) selected.push("table");
+  if (els.typeBoxes.checked) selected.push("boxes");
+  const specs = Array.isArray(slide.diagram_specs) ? slide.diagram_specs : [];
+  const filtered = specs.filter(s => !selected.length || selected.includes(String(s.kind || "").toLowerCase()));
+  if (filtered.length) {
+    return filtered.length === 1 ? filtered[0] : filtered[idx % filtered.length];
+  }
+  return {
+    kind: "table",
+    title: slide.title || "Diagram",
+    data: { columns: ["Aspect", "Detail", "Cue"], rows: [[slide.title || "Topic", slide.body || "", "Key idea"]] }
+  };
+}
+
+function renderTable(c, theme, spec, x, y, w, h) {
+  const data = spec.data || {};
+  const title = String(spec.title || "Diagram");
+  const cols = (data.columns || ["Aspect", "Detail", "Cue"]).slice(0, 3).map(String);
+  while (cols.length < 3) cols.push("");
+  const rows = normalizeRows(data.rows || [], title).slice(0, 6);
+
+  const titleFont = FONT_PRESETS[els.font.value]?.title_font || theme.title_font || "Noto Sans";
+  const bodyFont = FONT_PRESETS[els.font.value]?.body_font || theme.body_font || "Noto Sans";
+
+  const titleSize = fit(c, title, titleFont, w, 44, 34, 16, true);
+  drawText(c, title, x, y, w, titleSize * 1.08, titleFont, titleSize, `#${theme.title}`, true);
+
+  const top = y + 60;
+  const rowH = (h - 60) / (rows.length + 1);
+  const widths = [w * 0.3, w * 0.4, w * 0.3];
+  const all = [cols, ...rows];
+
+  let cy = top;
+  for (let r = 0; r < all.length; r++) {
+    let cx = x;
+    for (let col = 0; col < 3; col++) {
+      const fill = r === 0 ? `#${theme.accent}` : (r % 2 ? `#${theme.body_fill}` : `#${theme.sidebar}`);
+      rr(c, cx, cy, widths[col], rowH, 10, fill, "rgba(47,90,158,.18)", 1);
+      const text = String(all[r][col] || "");
+      const size = fit(c, text, bodyFont, widths[col] - 18, rowH - 18, r === 0 ? 24 : 20, 11, r === 0);
+      drawText(c, text, cx + 10, cy + 10, widths[col] - 18, size * 1.12, bodyFont, size, r === 0 ? "#fff" : `#${theme.body}`, r === 0);
+      cx += widths[col];
+    }
+    cy += rowH;
+  }
+}
+
+function renderBoxes(c, theme, spec, x, y, w, h) {
+  const data = spec.data || {};
+  const heading = String(data.heading || "Important words");
+  const title = String(spec.title || "Diagram");
+  const words = normalizeWords(data.words || data.items || []);
+
+  const titleFont = FONT_PRESETS[els.font.value]?.title_font || theme.title_font || "Noto Sans";
+  const bodyFont = FONT_PRESETS[els.font.value]?.body_font || theme.body_font || "Noto Sans";
+
+  const hSize = fit(c, heading, titleFont, w, 40, 34, 16, true);
+  drawText(c, heading, x, y, w, hSize * 1.1, titleFont, hSize, `#${theme.title}`, true);
+  const tSize = fit(c, title, bodyFont, w, 30, 24, 12);
+  drawText(c, title, x, y + 42, w, tSize * 1.1, bodyFont, tSize, "#64748B");
+
+  const top = y + 88;
+  const cols = words.length > 3 ? 2 : 1;
+  const rows = Math.ceil(words.length / cols);
+  const gapX = 24;
+  const gapY = 24;
+  const cellW = (w - gapX * (cols - 1)) / cols;
+  const cellH = (h - 90 - gapY * (rows - 1)) / rows;
+  const best = fit(c, words.join(" "), bodyFont, cellW - 36, cellH - 36, 34, 16, true);
+
+  for (let i = 0; i < words.length; i++) {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    const bx = x + col * (cellW + gapX);
+    const by = top + row * (cellH + gapY);
+    rr(c, bx, by, cellW, cellH, 18, "#E8F0FF", `#${theme.accent}`, 2);
+
+    const word = String(words[i] || "");
+    const size = fit(c, word, bodyFont, cellW - 34, cellH - 34, best, 14, true);
+    const lines = wrap(c, word, `${700} ${size}px ${bodyFont}`, cellW - 34);
+    const total = lines.length * size * 1.08;
+    drawText(c, word, bx + 16, by + (cellH - total) / 2, cellW - 32, size * 1.08, bodyFont, size, `#${theme.title}`, true);
+  }
+}
+
+function renderSlide(slide, idx) {
+  const theme = THEMES[els.theme.value] || THEMES["Academic Default"];
+  const preset = FONT_PRESETS[els.font.value] || FONT_PRESETS["Academic Sans"];
+  const spec = pickVariant(slide, idx);
+
+  ctx.clearRect(0, 0, SLIDE_W, SLIDE_H);
+  ctx.fillStyle = `#${theme.bg}`;
+  ctx.fillRect(0, 0, SLIDE_W, SLIDE_H);
+
+  const margin = 70;
+  rr(ctx, margin, 32, SLIDE_W - margin * 2, 82, 18, "#fff", "rgba(47,90,158,.12)", 1);
+
+  const title = String(slide.title || "Untitled");
+  const titleSize = fit(ctx, title, preset.title_font || theme.title_font, SLIDE_W - margin * 2 - 40, 52, 42, 22, true);
+  drawText(ctx, title, margin + 20, 48, SLIDE_W - margin * 2 - 40, titleSize * 1.1, preset.title_font || theme.title_font, titleSize, `#${theme.title}`, true);
+
+  const bodyX = margin;
+  const bodyY = 140;
+  const bodyW = 620;
+  const bodyH = 655;
+  const diagX = bodyX + bodyW + 24;
+  const diagY = 140;
+  const diagW = SLIDE_W - diagX - margin;
+  const diagH = 655;
+
+  rr(ctx, bodyX, bodyY, bodyW, bodyH, 20, "#fff", "rgba(47,90,158,.12)", 1);
+  rr(ctx, diagX, diagY, diagW, diagH, 20, "#fff", "rgba(47,90,158,.12)", 1);
+
+  const bodyTitle = String(slide.title || "Slide").toUpperCase();
+  const bodyTitleSize = fit(ctx, bodyTitle, preset.body_font || theme.body_font, bodyW - 36, 42, 28, 16, true);
+  drawText(ctx, bodyTitle, bodyX + 18, bodyY + 18, bodyW - 36, bodyTitleSize * 1.08, preset.body_font || theme.body_font, bodyTitleSize, `#${theme.accent}`, true);
+
+  const bodySize = Number(els.density.value) >= 4 ? 22 : Number(els.density.value) === 3 ? 24 : 26;
+  drawText(ctx, String(slide.body || ""), bodyX + 18, bodyY + 72, bodyW - 36, bodySize * 1.35, preset.body_font || theme.body_font, bodySize, `#${theme.body}`);
+
+  if (spec.kind === "boxes") {
+    renderBoxes(ctx, theme, spec, diagX + 18, diagY + 18, diagW - 36, diagH - 36);
+  } else {
+    renderTable(ctx, theme, spec, diagX + 18, diagY + 18, diagW - 36, diagH - 36);
+  }
+
+  ctx.fillStyle = `#${theme.accent}`;
+  ctx.font = `700 18px ${preset.body_font || theme.body_font}`;
+  ctx.fillText(`Slide ${idx + 1} / ${state.slides.length}`, margin, SLIDE_H - 44);
+
+  return els.renderCanvas.toDataURL("image/png");
+}
+
+function summary() {
+  if (!state.slides.length) {
+    els.slideSummary.textContent = "No slides yet.";
+    els.slidesList.innerHTML = "";
+    return;
+  }
+  els.slideSummary.textContent = `${state.slides.length} slides ready for export.`;
+  els.slidesList.innerHTML = state.slides.map((s, i) => `
+    <div class="slide-item">
+      <h4>${i + 1}. ${esc(s.title || `Slide ${i + 1}`)}</h4>
+      <p>${esc(String(s.body || "").slice(0, 120))}${String(s.body || "").length > 120 ? "…" : ""}</p>
+    </div>
+  `).join("");
+}
+
+function fallback(req) {
+  const steps = ["Overview", "Core ideas", "Examples", "Applications", "Review", "Summary"];
+  return Array.from({ length: req.slides }, (_, i) => {
+    const title = `${req.topic} - ${steps[i % steps.length]}`;
+    const body = `${req.topic} in ${req.language}. Key classroom notes for ${req.level}.`;
+    return {
+      title,
+      body,
+      diagram_brief: `${title}. Classroom visual using a table and important-word boxes.`,
+      diagram_specs: [
+        {
+          kind: "table",
+          title,
+          data: {
+            columns: ["Aspect", "Detail", "Cue"],
+            rows: [
+              ["Core", "Key concept", "Use"],
+              ["Example", "Simple example", "See it"],
+              ["Apply", "Use in class", "Do it"]
+            ]
+          }
+        },
+        {
+          kind: "boxes",
+          title,
+          data: {
+            heading: "Important words",
+            words: ["Main idea", "Example", "Application", "Key term"]
+          }
+        }
+      ]
+    };
+  });
+}
+
+function buildSchema(slideCount) {
+  return {
+    type: "array",
+    minItems: slideCount,
+    maxItems: slideCount,
+    items: {
+      type: "object",
+      additionalProperties: false,
+      required: ["title", "body", "diagram_brief", "diagram_specs"],
+      properties: {
+        title: { type: "string" },
+        body: { type: "string" },
+        diagram_brief: { type: "string" },
+        diagram_specs: {
+          type: "array",
+          minItems: 2,
+          maxItems: 2,
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: ["kind", "title", "data"],
+            properties: {
+              kind: { type: "string", enum: ["table", "boxes"] },
+              title: { type: "string" },
+              data: {
+                type: "object",
+                additionalProperties: true,
+                properties: {
+                  columns: { type: "array", items: { type: "string" }, minItems: 3, maxItems: 3 },
+                  rows: {
+                    type: "array",
+                    items: {
+                      type: "array",
+                      items: { type: "string" },
+                      minItems: 3,
+                      maxItems: 3
+                    }
+                  },
+                  heading: { type: "string" },
+                  words: { type: "array", items: { type: "string" } }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  };
+}
+
+function buildPrompt(req) {
+  return `
+Topic: ${req.topic}
+Language: ${req.language}
+Target level: ${req.level}
+Textual density: ${req.density}
+Slides to generate: ${req.slides}
+Approximate words per slide: ${req.words}
+
+Return EXACTLY ${req.slides} slide objects as valid JSON.
+Each slide must include title, body, diagram_brief, and diagram_specs (one table, one boxes layout).
+Reply with JSON only.
+`.trim();
+}
+
+function coerceSlides(parsed, req) {
+  if (Array.isArray(parsed)) return parsed;
+  if (parsed && typeof parsed === "object") {
+    if (Array.isArray(parsed.slides)) return parsed.slides;
+    if (Array.isArray(parsed.items)) return parsed.items;
+  }
+  return fallback(req);
+}
+
+async function generateSlides() {
+  if (state.busy) return;
+  state.busy = true;
+  els.generateBtn.disabled = true;
+  els.exportPptxBtn.disabled = true;
+  els.exportPdfBtn.disabled = true;
+
+  try {
+    state.settings = collect();
+    if (!state.settings.topic) {
+      setStatus("Error", "Enter a topic first.");
+      return;
+    }
+    if (!state.settings.apiKey) {
+      setStatus("Error", "Enter a Gemini API key.");
+      return;
+    }
+
+    save();
+    state.topic = state.settings.topic;
+
+    const req = {
+      topic: state.topic,
+      language: state.settings.language,
+      level: state.settings.level,
+      density: state.settings.density,
+      slides: Math.max(3, Math.min(30, Number(state.settings.slides) || 6)),
+      words: Math.max(25, Math.min(150, Number(state.settings.words) || 70)),
+      model: state.settings.model
+    };
+
+    setStatus("Working", "Generating slide JSON with Gemini...");
+    log(`Generating ${req.slides} slides for "${req.topic}" using ${req.model}.`);
+
+    let parsed;
+    try {
+      const ai = new GoogleGenAI({ apiKey: state.settings.apiKey });
+      const response = await ai.models.generateContent({
+        model: req.model,
+        contents: buildPrompt(req),
+        config: {
+          responseMimeType: "application/json",
+          responseJsonSchema: buildSchema(req.slides)
+        }
+      });
+      parsed = JSON.parse(String(response.text || "").trim());
+      log("Gemini JSON received.");
+    } catch (err) {
+      log(`AI generation failed, using fallback: ${err?.message || err}`);
+      parsed = fallback(req);
+    }
+
+    const arr = coerceSlides(parsed, req);
+    state.slides = arr.slice(0, req.slides).map((s, i) => ({
+      title: String(s?.title || `${req.topic} ${i + 1}`),
+      body: String(s?.body || `${req.topic} overview in ${req.language}.`),
+      diagram_brief: String(s?.diagram_brief || `${req.topic}. Classroom visual.`),
+      diagram_specs: Array.isArray(s?.diagram_specs) ? s.diagram_specs : fallback(req)[0].diagram_specs
+    }));
+
+    while (state.slides.length < req.slides) {
+      const i = state.slides.length;
+      state.slides.push({
+        title: `${req.topic} ${i + 1}`,
+        body: `${req.topic} overview in ${req.language}.`,
+        diagram_brief: `${req.topic}. Classroom visual.`,
+        diagram_specs: fallback(req)[0].diagram_specs
+      });
+    }
+
+    summary();
+    els.exportPptxBtn.disabled = false;
+    els.exportPdfBtn.disabled = false;
+    setStatus("Ready", "Slides generated.");
+    log(`Prepared ${state.slides.length} slides.`);
+
+    if (state.settings.autoPptx) await exportPptx();
+    if (state.settings.autoPdf) await exportPdf();
+  } catch (err) {
+    setStatus("Error", err?.message || String(err));
+    log(`ERROR: ${err?.stack || err}`);
+  } finally {
+    els.generateBtn.disabled = false;
+    state.busy = false;
+  }
+}
+
+async function exportPptx() {
+  if (!state.slides.length) return;
+  setStatus("Working", "Building PPTX...");
+
+  const pptx = new PptxGenJS();
+  pptx.layout = "LAYOUT_WIDE";
+  pptx.author = "BrahmaDeck Web";
+  pptx.subject = state.topic;
+  pptx.title = filename(state.topic, "pptx");
+
+  for (let i = 0; i < state.slides.length; i++) {
+    const img = renderSlide(state.slides[i], i);
+    const slide = pptx.addSlide();
+    slide.addImage({ data: img, x: 0, y: 0, w: PPTX_W, h: PPTX_H });
+  }
+
+  const file = filename(state.topic, "pptx");
+  await pptx.writeFile({ fileName: file });
+  log(`PPTX exported: ${file}`);
+  setStatus("Ready", `PPTX exported: ${file}`);
+}
+
+async function exportPdf() {
+  if (!state.slides.length) return;
+  setStatus("Working", "Building PDF...");
+
+  const pdf = new jsPDF({
+    orientation: "landscape",
+    unit: "pt",
+    format: [PPTX_W * 72, PPTX_H * 72],
+    compress: true
+  });
+
+  const width = PPTX_W * 72;
+  const height = PPTX_H * 72;
+
+  for (let i = 0; i < state.slides.length; i++) {
+    const img = renderSlide(state.slides[i], i);
+    if (i > 0) pdf.addPage([width, height], "landscape");
+    pdf.addImage(img, "PNG", 0, 0, width, height, undefined, "FAST");
+  }
+
+  const file = filename(state.topic, "pdf");
+  if (els.openPdf.checked) {
+    const blob = pdf.output("blob");
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank", "noopener,noreferrer");
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+  }
+  pdf.save(file);
+  log(`PDF exported: ${file}`);
+  setStatus("Ready", `PDF exported: ${file}`);
+}
+
+async function clearAll() {
+  state.slides = [];
+  state.topic = "";
+  els.topic.value = "";
+  summary();
+  els.exportPptxBtn.disabled = true;
+  els.exportPdfBtn.disabled = true;
+  setStatus("Idle", "Ready.");
+  log("Cleared generated slides.");
+}
+
+function sync() {
+  save();
+  document.documentElement.style.setProperty("--accent", `#${(THEMES[els.theme.value] || THEMES["Academic Default"]).accent}`);
+}
+
+function bindUi() {
+  for (const id of ["apiKey", "model", "topic", "language", "level", "density", "slides", "words", "theme", "font", "autoPptx", "autoPdf", "typeTable", "typeBoxes", "openPdf"]) {
+    els[id].addEventListener("input", sync);
+    els[id].addEventListener("change", sync);
+  }
+  els.generateBtn.addEventListener("click", generateSlides);
+  els.clearBtn.addEventListener("click", clearAll);
+  els.exportPptxBtn.addEventListener("click", exportPptx);
+  els.exportPdfBtn.addEventListener("click", exportPdf);
+}
+
+async function main() {
+  load();
+  applySettings();
+  bindUi();
+  summary();
+  setStatus("Idle", "Ready.");
+  log("BrahmaDeck Web loaded.");
+  await document.fonts.ready.catch(() => {});
+  log("Fonts ready.");
+}
+
+main();
