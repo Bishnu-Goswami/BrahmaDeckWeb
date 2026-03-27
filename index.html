@@ -256,10 +256,55 @@
       font-weight: 700;
       line-height: 1.45;
     }
+    .alert-actions {
+      margin-top: 10px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
     html[data-app-theme="dark"] .alert {
       border-color: rgba(248, 113, 113, 0.45);
       background: rgba(127, 29, 29, 0.3);
       color: #fecaca;
+    }
+    .api-key-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .api-key-card {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      padding: 12px 14px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: linear-gradient(180deg, var(--panel), var(--panel2));
+    }
+    .api-key-card.active {
+      border-color: rgba(47,90,158,.35);
+      box-shadow: 0 10px 24px rgba(47,90,158,.08);
+    }
+    .api-key-meta {
+      display: grid;
+      gap: 4px;
+    }
+    .api-key-label {
+      font-weight: 700;
+      color: var(--text);
+    }
+    .api-key-value {
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 12px;
+      color: var(--muted);
+      word-break: break-all;
+    }
+    .api-key-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
     }
     .settings-panel {
       margin-bottom: 12px;
@@ -346,20 +391,10 @@
     <div class="panel">
       <div class="section">AI</div>
       <div class="api-state">
-        <span id="apiStatus" class="pill">API key not saved</span>
-        <button id="changeApiBtn" class="btn secondary" type="button">Change API key</button>
+        <span id="apiStatus" class="pill">No active API key</span>
+        <button id="changeApiBtn" class="btn secondary" type="button">Manage API keys</button>
       </div>
-
-      <div id="apiPanel" class="panel api-panel hidden">
-        <div class="field">
-          <label>Gemini API key</label>
-          <input id="apiKey" type="password" placeholder="AIza..." autocomplete="off" />
-        </div>
-        <div class="row">
-          <button id="saveApiBtn" class="btn" type="button">Save API key</button>
-          <button id="hideApiBtn" class="btn secondary" type="button">Hide</button>
-        </div>
-      </div>
+      <p class="small" style="margin-bottom:12px">Save multiple Gemini API keys locally inside Advanced settings, then keep one active for generation.</p>
 
       <div class="field">
         <label>Topic</label>
@@ -517,9 +552,33 @@
         <button id="randomizeBtn" class="btn secondary" type="button">Randomize themes &amp; fonts</button>
       </div>
 
-      <details class="advanced">
+      <details class="advanced" id="advancedSettings">
         <summary>Advanced settings</summary>
         <div class="advanced-content">
+          <details class="settings-panel" id="apiManagerPanel">
+            <summary>API key manager</summary>
+            <div class="settings-content">
+              <p class="small">Add multiple Gemini API keys locally. The active key is used for slide, DOCX, and image-link generation.</p>
+              <div class="grid2">
+                <div class="field">
+                  <label>Add Gemini API key</label>
+                  <input id="newApiKey" type="password" placeholder="AIza..." autocomplete="off" />
+                </div>
+                <div class="field">
+                  <label>Active API key</label>
+                  <select id="activeApiKey"></select>
+                </div>
+              </div>
+              <div class="row">
+                <button id="addApiKeyBtn" class="btn" type="button">Save key locally</button>
+                <button id="removeApiKeyBtn" class="btn secondary" type="button">Remove active key</button>
+                <button id="clearApiKeysBtn" class="btn secondary" type="button">Clear all keys</button>
+              </div>
+              <div class="small" id="apiKeyCountLabel" style="margin-top:10px">0 saved keys</div>
+              <div id="apiKeyList" class="api-key-list"></div>
+            </div>
+          </details>
+
           <div class="field">
             <label>Model</label>
             <select id="model">
@@ -600,6 +659,7 @@ import {
 } from "https://esm.sh/docx?bundle";
 
 const STORAGE_KEY = "brahmadeck-web-settings-v2";
+const API_KEYS_STORAGE_KEY = "brahmadeck-web-api-keys-v1";
 const SLIDE_W = 1600;
 const SLIDE_H = 900;
 const PPTX_W = 13.333;
@@ -685,7 +745,9 @@ const state = {
   currentSlideRequest: null,
   currentDocxRequest: null,
   imageLinks: [],
-  currentImageRequest: null
+  currentImageRequest: null,
+  apiKeys: [],
+  activeApiKeyIndex: -1
 };
 
 for (const key of Object.keys(THEMES)) {
@@ -709,6 +771,175 @@ const buttonLabels = {
 };
 
 const themeQuery = window.matchMedia("(prefers-color-scheme: dark)");
+
+function normalizeApiKey(value) {
+  return String(value || "").trim();
+}
+
+function maskApiKey(key) {
+  const clean = normalizeApiKey(key);
+  if (!clean) return "";
+  if (clean.length <= 12) return clean;
+  return `${clean.slice(0, 5)}…${clean.slice(-4)}`;
+}
+
+function isSensitiveGeminiError(err) {
+  const msg = normalizeErrorMessage(err).toLowerCase();
+  return /resource exhausted|quota|rate limit|too many requests|429|insufficient|exceeded|billing|overloaded|daily quota|api key|permission denied|forbidden|unauthorized/.test(msg);
+}
+
+function normalizeApiKeys(list) {
+  const out = [];
+  const seen = new Set();
+  for (const item of Array.isArray(list) ? list : []) {
+    const key = normalizeApiKey(item);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(key);
+  }
+  return out;
+}
+
+function getActiveApiKeyIndex() {
+  const count = state.apiKeys.length;
+  if (!count) return -1;
+  const idx = Number.isInteger(state.activeApiKeyIndex) ? state.activeApiKeyIndex : -1;
+  if (idx >= 0 && idx < count) return idx;
+  return 0;
+}
+
+function getActiveApiKey() {
+  const idx = getActiveApiKeyIndex();
+  return idx >= 0 ? state.apiKeys[idx] : "";
+}
+
+function setActiveApiKeyIndex(index) {
+  if (!state.apiKeys.length) {
+    state.activeApiKeyIndex = -1;
+    updateApiUI();
+    save();
+    return;
+  }
+  const normalized = ((Number(index) % state.apiKeys.length) + state.apiKeys.length) % state.apiKeys.length;
+  state.activeApiKeyIndex = normalized;
+  updateApiUI();
+  renderApiKeyManager();
+  save();
+}
+
+function cycleApiKey(step = 1) {
+  if (state.apiKeys.length <= 1) return false;
+  setActiveApiKeyIndex(getActiveApiKeyIndex() + step);
+  return true;
+}
+
+function addApiKey(value) {
+  const key = normalizeApiKey(value);
+  if (!key) return false;
+  const existed = state.apiKeys.includes(key);
+  if (!existed) {
+    state.apiKeys.push(key);
+  }
+  state.activeApiKeyIndex = state.apiKeys.indexOf(key);
+  renderApiKeyManager();
+  updateApiUI();
+  save();
+  return true;
+}
+
+function removeActiveApiKey() {
+  const idx = getActiveApiKeyIndex();
+  if (idx < 0) return false;
+  state.apiKeys.splice(idx, 1);
+  if (!state.apiKeys.length) {
+    state.activeApiKeyIndex = -1;
+  } else if (idx >= state.apiKeys.length) {
+    state.activeApiKeyIndex = state.apiKeys.length - 1;
+  } else {
+    state.activeApiKeyIndex = idx;
+  }
+  renderApiKeyManager();
+  updateApiUI();
+  save();
+  return true;
+}
+
+function clearApiKeys() {
+  state.apiKeys = [];
+  state.activeApiKeyIndex = -1;
+  renderApiKeyManager();
+  updateApiUI();
+  save();
+}
+
+function renderApiKeyManager() {
+  const list = els.apiKeyList;
+  if (!list || !els.activeApiKey || !els.apiKeyCountLabel) return;
+
+  const activeIdx = getActiveApiKeyIndex();
+  const keyCount = state.apiKeys.length;
+  els.apiKeyCountLabel.textContent = keyCount
+    ? `${keyCount} saved key${keyCount === 1 ? "" : "s"} • active key ${activeIdx + 1} of ${keyCount}`
+    : "0 saved keys";
+
+  els.activeApiKey.innerHTML = "";
+  if (!keyCount) {
+    els.activeApiKey.add(new Option("No saved API keys", ""));
+  } else {
+    state.apiKeys.forEach((key, idx) => {
+      const label = `${idx + 1}. ${maskApiKey(key)}`;
+      els.activeApiKey.add(new Option(label, String(idx), false, idx === activeIdx));
+    });
+  }
+  els.activeApiKey.value = keyCount ? String(activeIdx >= 0 ? activeIdx : 0) : "";
+
+  list.innerHTML = keyCount
+    ? state.apiKeys.map((key, idx) => `
+      <div class="api-key-card ${idx === activeIdx ? "active" : ""}">
+        <div class="api-key-meta">
+          <div class="api-key-label">${idx === activeIdx ? "Active key" : "Saved key"} ${idx + 1}</div>
+          <div class="api-key-value">${esc(maskApiKey(key))}</div>
+        </div>
+        <div class="api-key-actions">
+          <button class="btn secondary" type="button" data-api-action="activate" data-index="${idx}">${idx === activeIdx ? "Selected" : "Use"}</button>
+          <button class="btn secondary" type="button" data-api-action="remove" data-index="${idx}">Remove</button>
+        </div>
+      </div>
+    `).join("")
+    : `<div class="small">No API keys saved yet. Add one above.</div>`;
+}
+
+function openApiManager() {
+  const advanced = document.getElementById("advancedSettings");
+  const manager = document.getElementById("apiManagerPanel");
+  if (advanced) advanced.open = true;
+  if (manager) manager.open = true;
+  document.getElementById("newApiKey")?.focus();
+  manager?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function showGeminiKeyHint(err, contextLabel, req) {
+  const msg = normalizeErrorMessage(err);
+  const active = maskApiKey(req?.apiKey || getActiveApiKey()) || "the current key";
+  const keyCount = state.apiKeys.length;
+  const base = `Gemini ${contextLabel} failed for ${active}: ${msg}`;
+  const hint = keyCount > 1
+    ? " Switch to a different locally saved API key in Advanced settings."
+    : " Save another Gemini API key in Advanced settings and try again.";
+  setApiAlert(base + hint, {
+    label: keyCount > 1 ? "Switch key" : "Open key manager",
+    onClick: () => {
+      if (keyCount > 1) {
+        cycleApiKey(1);
+        setStatus("Ready", "Active API key changed. Try generating again.");
+        log("Switched to the next saved Gemini API key.");
+      } else {
+        openApiManager();
+      }
+    }
+  });
+  setStatus("API error", msg);
+}
 
 function esc(text) {
   return String(text)
@@ -743,15 +974,22 @@ function setStatus(kind, text) {
   els.status.innerHTML = `<span class="pill">${esc(kind)}</span><span id="statusText">${esc(text)}</span>`;
 }
 
-function setApiAlert(message) {
+function setApiAlert(message, action = null) {
   if (!els.apiAlert) return;
   if (!message) {
-    els.apiAlert.textContent = "";
+    els.apiAlert.innerHTML = "";
     els.apiAlert.classList.add("hidden");
     return;
   }
-  els.apiAlert.textContent = message;
+  const actionHtml = action
+    ? `<div class="alert-actions"><button id="apiAlertActionBtn" class="btn secondary" type="button">${esc(action.label || "Open")}</button></div>`
+    : "";
+  els.apiAlert.innerHTML = `<div>${esc(message)}</div>${actionHtml}`;
   els.apiAlert.classList.remove("hidden");
+  const actionBtn = document.getElementById("apiAlertActionBtn");
+  if (actionBtn && typeof action?.onClick === "function") {
+    actionBtn.addEventListener("click", action.onClick, { once: true });
+  }
 }
 
 function clearApiAlert() {
@@ -763,8 +1001,7 @@ function normalizeErrorMessage(err) {
 }
 
 function isApiError(err) {
-  const msg = normalizeErrorMessage(err).toLowerCase();
-  return /resource exhausted|quota|rate limit|too many requests|429|insufficient|exceeded|billing|unavailable|overloaded/.test(msg);
+  return isSensitiveGeminiError(err);
 }
 
 function setGenerationBusy(activeKey = null) {
@@ -784,7 +1021,7 @@ function applyAppTheme() {
 
 function collectCommon() {
   return {
-    apiKey: els.apiKey.value.trim(),
+    apiKey: getActiveApiKey(),
     model: els.model.value,
     topic: els.topic.value.trim(),
     extraInstructions: els.extraInstructions.value.trim(),
@@ -827,7 +1064,9 @@ function collect() {
   return {
     ...collectCommon(),
     ...collectSlideSettings(),
-    ...collectDocxSettings()
+    ...collectDocxSettings(),
+    apiKeys: state.apiKeys.slice(),
+    activeApiKeyIndex: getActiveApiKeyIndex()
   };
 }
 
@@ -835,8 +1074,15 @@ function load() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
     state.settings = saved && typeof saved === "object" ? saved : {};
+    const migratedKeys = normalizeApiKeys(state.settings.apiKeys);
+    const legacyKey = normalizeApiKey(state.settings.apiKey);
+    state.apiKeys = migratedKeys.length ? migratedKeys : (legacyKey ? [legacyKey] : []);
+    const storedIndex = Number.isInteger(state.settings.activeApiKeyIndex) ? state.settings.activeApiKeyIndex : -1;
+    state.activeApiKeyIndex = state.apiKeys.length ? (storedIndex >= 0 && storedIndex < state.apiKeys.length ? storedIndex : 0) : -1;
   } catch {
     state.settings = {};
+    state.apiKeys = [];
+    state.activeApiKeyIndex = -1;
   }
 }
 
@@ -846,27 +1092,29 @@ function save() {
 }
 
 function updateApiUI() {
-  const hasKey = Boolean((els.apiKey?.value || "").trim());
-  els.apiStatus.textContent = hasKey ? "API key saved locally" : "API key not saved";
-  els.changeApiBtn.textContent = hasKey ? "Change API key" : "Add API key";
-  if (hasKey && !els.apiPanel.dataset.forceOpen) {
-    els.apiPanel.classList.add("hidden");
+  const count = state.apiKeys.length;
+  const activeIdx = getActiveApiKeyIndex();
+  const activeKey = getActiveApiKey();
+
+  if (!count) {
+    els.apiStatus.textContent = "No active API key";
   } else {
-    els.apiPanel.classList.remove("hidden");
+    els.apiStatus.textContent = `Active key ${activeIdx + 1}/${count}`;
+  }
+  els.changeApiBtn.textContent = "Manage API keys";
+  if (activeKey) {
+    els.apiStatus.title = maskApiKey(activeKey);
+  } else {
+    els.apiStatus.removeAttribute("title");
   }
 }
 
 function openApiPanel() {
-  els.apiPanel.dataset.forceOpen = "1";
-  els.apiPanel.classList.remove("hidden");
-  els.apiKey.focus();
+  openApiManager();
 }
 
 function closeApiPanel() {
-  delete els.apiPanel.dataset.forceOpen;
-  if (els.apiKey.value.trim()) {
-    els.apiPanel.classList.add("hidden");
-  }
+  // Kept for compatibility with existing calls.
 }
 
 function defaultTheme() {
@@ -875,7 +1123,6 @@ function defaultTheme() {
 
 function applySettings() {
   const s = state.settings || {};
-  els.apiKey.value = s.apiKey || "";
   els.model.value = s.model || "gemini-3-flash-preview";
   els.topic.value = s.topic || "";
   els.extraInstructions.value = s.extraInstructions || "";
@@ -905,6 +1152,7 @@ function applySettings() {
   els.imageLinkCount.value = String(s.imageLinkCount ?? 5);
   els.referenceLinkCount.value = String(s.referenceLinkCount ?? 3);
 
+  renderApiKeyManager();
   document.documentElement.style.setProperty(
     "--accent",
     `#${(THEMES[els.slideTheme.value] || THEMES[defaultTheme()]).accent}`
@@ -1523,8 +1771,7 @@ async function generateImageLinks(req, slides) {
     const msg = normalizeErrorMessage(err);
     log(`Image link generation failed, using fallback: ${msg}`);
     if (isApiError(err)) {
-      setApiAlert(`Gemini API error while finding image links: ${msg}`);
-      setStatus("API error", msg);
+      showGeminiKeyHint(err, "image link generation", req);
     }
     parsed = fallbackImageLinks(req, slides);
   }
@@ -1729,8 +1976,7 @@ async function generateSlidesContent(req) {
     const msg = normalizeErrorMessage(err);
     log(`Slide generation failed, using fallback: ${msg}`);
     if (isApiError(err)) {
-      setApiAlert(`Gemini API error while generating slides: ${msg}`);
-      setStatus("API error", msg);
+      showGeminiKeyHint(err, "slide generation", req);
     }
     parsed = fallbackSlides(req);
   }
@@ -1779,8 +2025,7 @@ async function generateDocxContent(req) {
     const msg = normalizeErrorMessage(err);
     log(`DOCX generation failed, using fallback: ${msg}`);
     if (isApiError(err)) {
-      setApiAlert(`Gemini API error while generating DOCX: ${msg}`);
-      setStatus("API error", msg);
+      showGeminiKeyHint(err, "DOCX generation", req);
     }
     state.docxDoc = fallbackDocxDoc(req);
   }
@@ -1800,7 +2045,7 @@ async function runWorkflow(kind) {
       setStatus("Error", "Enter a topic first.");
       return;
     }
-    if (!state.settings.apiKey) {
+    if (!getActiveApiKey()) {
       openApiPanel();
       setStatus("Error", "Save a Gemini API key first.");
       return;
@@ -2189,7 +2434,6 @@ function bindUi() {
     els[id].addEventListener("input", sync);
     els[id].addEventListener("change", sync);
   }
-  els.apiKey.addEventListener("input", updateApiUI);
   els.generateSlidesBtn.addEventListener("click", () => runWorkflow("slides"));
   els.generateDocxBtn.addEventListener("click", () => runWorkflow("docx"));
   els.generateBothBtn.addEventListener("click", () => runWorkflow("both"));
@@ -2197,16 +2441,45 @@ function bindUi() {
   els.randomizeBtn.addEventListener("click", randomizeThemeFont);
   els.exportPptxBtn.addEventListener("click", exportPptx);
   els.exportDocxBtn.addEventListener("click", exportDocx);
-  els.changeApiBtn.addEventListener("click", openApiPanel);
-  els.saveApiBtn.addEventListener("click", () => {
-    save();
-    closeApiPanel();
-    updateApiUI();
-    log("API key saved locally.");
+  els.changeApiBtn.addEventListener("click", openApiManager);
+  els.activeApiKey?.addEventListener("change", () => setActiveApiKeyIndex(Number(els.activeApiKey.value)));
+  els.addApiKeyBtn?.addEventListener("click", () => {
+    const input = document.getElementById("newApiKey");
+    if (!input) return;
+    const key = input.value.trim();
+    if (!key) return;
+    if (addApiKey(key)) {
+      input.value = "";
+      renderApiKeyManager();
+      updateApiUI();
+      log("API key saved locally.");
+      openApiManager();
+    }
   });
-  els.hideApiBtn.addEventListener("click", () => {
-    closeApiPanel();
-    updateApiUI();
+  els.removeApiKeyBtn?.addEventListener("click", () => {
+    if (removeActiveApiKey()) {
+      log("Removed the active Gemini API key.");
+      updateApiUI();
+    }
+  });
+  els.clearApiKeysBtn?.addEventListener("click", () => {
+    clearApiKeys();
+    log("Cleared all saved Gemini API keys.");
+  });
+  els.apiKeyList?.addEventListener("click", (event) => {
+    const target = event.target?.closest?.("[data-api-action]");
+    if (!target) return;
+    const index = Number(target.dataset.index);
+    const action = target.dataset.apiAction;
+    if (action === "activate") {
+      setActiveApiKeyIndex(index);
+      log(`Selected saved Gemini API key ${index + 1}.`);
+    } else if (action === "remove") {
+      state.activeApiKeyIndex = index;
+      if (removeActiveApiKey()) {
+        log(`Removed saved Gemini API key ${index + 1}.`);
+      }
+    }
   });
   themeQuery.addEventListener?.("change", applyAppTheme);
 }
@@ -2216,6 +2489,8 @@ async function main() {
   load();
   applySettings();
   bindUi();
+  renderApiKeyManager();
+  updateApiUI();
   clearApiAlert();
   summary();
   setStatus("Idle", "Ready.");
