@@ -19,6 +19,30 @@
       --shadow: 0 20px 50px rgba(17, 24, 39, 0.08);
       --radius: 20px;
       --sans: "Noto Sans", "Noto Sans Bengali", "Noto Sans Devanagari", system-ui, sans-serif;
+      --sidebar-bg: rgba(255,255,255,.82);
+      --input-bg: #fff;
+      --secondary-bg: #fff;
+      --chip-bg: rgba(47,90,158,.08);
+      --chip-text: var(--accent);
+      --log-bg: #08111f;
+      --log-text: #a3ffb2;
+    }
+    html[data-app-theme="dark"] {
+      --bg: #0b1220;
+      --panel: #111a2d;
+      --panel2: #0f1728;
+      --text: #e5e7eb;
+      --muted: #a8b3c7;
+      --accent: #60a5fa;
+      --line: #22324f;
+      --shadow: 0 24px 55px rgba(0, 0, 0, 0.35);
+      --sidebar-bg: rgba(12, 18, 32, .92);
+      --input-bg: #0d1728;
+      --secondary-bg: #101b31;
+      --chip-bg: rgba(96,165,250,.14);
+      --chip-text: #8ec5ff;
+      --log-bg: #050b14;
+      --log-text: #85f4a3;
     }
     * { box-sizing: border-box; }
     html, body {
@@ -26,7 +50,7 @@
       height: 100%;
       font-family: var(--sans);
       color: var(--text);
-      background: linear-gradient(135deg, #f3f7ff, #eef5f0);
+      background: var(--bg);
     }
     button, input, select, textarea { font: inherit; }
     button { cursor: pointer; }
@@ -38,7 +62,7 @@
     .sidebar {
       padding: 18px;
       border-right: 1px solid var(--line);
-      background: rgba(255,255,255,.82);
+      background: var(--sidebar-bg);
       backdrop-filter: blur(10px);
     }
     .main {
@@ -76,7 +100,8 @@
     .field input, .field select, .field textarea {
       width: 100%;
       border: 1px solid var(--line);
-      background: #fff;
+      background: var(--input-bg);
+      color: var(--text);
       border-radius: 14px;
       padding: 11px 12px;
       outline: none;
@@ -88,6 +113,12 @@
     }
     .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .generation-row {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+    }
     .btn {
       border: 0;
       background: linear-gradient(135deg, var(--accent), #3a7ebf);
@@ -98,10 +129,14 @@
       font-weight: 700;
     }
     .btn.secondary {
-      background: #fff;
+      background: var(--secondary-bg);
       color: var(--text);
       border: 1px solid var(--line);
       box-shadow: none;
+    }
+    .btn.working {
+      filter: brightness(1.05);
+      transform: translateY(-1px);
     }
     .btn:disabled { opacity: .5; cursor: not-allowed; box-shadow: none; }
     .checkrow { display: flex; gap: 12px; flex-wrap: wrap; }
@@ -112,7 +147,7 @@
       padding: 8px 11px;
       border: 1px solid var(--line);
       border-radius: 999px;
-      background: #fff;
+      background: var(--input-bg);
       font-size: 13px;
     }
     .status {
@@ -129,8 +164,8 @@
       align-items: center;
       padding: 6px 10px;
       border-radius: 999px;
-      background: rgba(47,90,158,.08);
-      color: var(--accent);
+      background: var(--chip-bg);
+      color: var(--chip-text);
       font-size: 12px;
       font-weight: 700;
     }
@@ -146,8 +181,8 @@
       font-family: ui-monospace, Consolas, monospace;
       font-size: 12px;
       line-height: 1.5;
-      background: #08111f;
-      color: #a3ffb2;
+      background: var(--log-bg);
+      color: var(--log-text);
       border-radius: 18px;
       padding: 14px;
       min-height: 160px;
@@ -164,7 +199,7 @@
       padding: 12px;
       border-radius: 16px;
       border: 1px solid var(--line);
-      background: linear-gradient(180deg, #fff, #f8fbff);
+      background: linear-gradient(180deg, var(--panel), var(--panel2));
     }
     .slide-item h4 { margin: 0 0 4px; font-size: 14px; }
     .slide-item p { margin: 0; font-size: 12px; color: var(--muted); }
@@ -199,7 +234,7 @@
       border: 1px solid var(--line);
       border-radius: 16px;
       padding: 10px 12px;
-      background: #fff;
+      background: var(--input-bg);
     }
     .advanced > summary {
       cursor: pointer;
@@ -211,7 +246,91 @@
     .advanced-content {
       margin-top: 12px;
     }
+    .alert {
+      margin-top: 10px;
+      border-radius: 16px;
+      padding: 12px 14px;
+      border: 1px solid rgba(248, 113, 113, 0.35);
+      background: rgba(248, 113, 113, 0.12);
+      color: #b91c1c;
+      font-weight: 700;
+      line-height: 1.45;
+    }
+    html[data-app-theme="dark"] .alert {
+      border-color: rgba(248, 113, 113, 0.45);
+      background: rgba(127, 29, 29, 0.3);
+      color: #fecaca;
+    }
+    .settings-panel {
+      margin-bottom: 12px;
+      padding: 12px 14px;
+      background: var(--input-bg);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+    }
+    .settings-panel > summary {
+      cursor: pointer;
+      color: var(--muted);
+      font-weight: 700;
+      list-style: none;
+    }
+    .settings-panel > summary::-webkit-details-marker { display: none; }
+    .settings-content { margin-top: 12px; }
+    .link-grid {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      margin-top: 10px;
+    }
+    .link-item {
+      display: block;
+      padding: 12px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: linear-gradient(180deg, var(--panel), var(--panel2));
+      text-decoration: none;
+      color: var(--text);
+      transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+    }
+    .link-item:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 22px rgba(17, 24, 39, 0.08);
+      border-color: rgba(47,90,158,.25);
+    }
+    .link-item h4 { margin: 0 0 6px; font-size: 14px; }
+    .link-item p { margin: 0 0 10px; font-size: 12px; color: var(--muted); }
+    .link-item a { color: var(--accent); font-weight: 700; text-decoration: none; word-break: break-word; }
+    .link-chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 5px 8px;
+      border-radius: 999px;
+      background: var(--chip-bg);
+      color: var(--chip-text);
+      font-size: 11px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
     .hidden { position: fixed; left: -10000px; top: -10000px; opacity: 0; pointer-events: none; }
+    @media (prefers-color-scheme: dark) {
+      html:not([data-app-theme="light"]) {
+        --bg: #0b1220;
+        --panel: #111a2d;
+        --panel2: #0f1728;
+        --text: #e5e7eb;
+        --muted: #a8b3c7;
+        --accent: #60a5fa;
+        --line: #22324f;
+        --shadow: 0 24px 55px rgba(0, 0, 0, 0.35);
+        --sidebar-bg: rgba(12, 18, 32, .92);
+        --input-bg: #0d1728;
+        --secondary-bg: #101b31;
+        --chip-bg: rgba(96,165,250,.14);
+        --chip-text: #8ec5ff;
+        --log-bg: #050b14;
+        --log-text: #85f4a3;
+      }
+    }
     @media (max-width: 1050px) {
       .app { grid-template-columns: 1fr; }
       .sidebar { border-right: 0; border-bottom: 1px solid var(--line); }
@@ -250,80 +369,152 @@
         <label>Additional instructions</label>
         <textarea id="extraInstructions" placeholder="Add any special directions for Gemini. These will guide generation but will not appear in the exported PPTX or DOCX."></textarea>
       </div>
-      <div class="row">
-        <button id="generateBtn" class="btn">Generate slides</button>
-        <button id="clearBtn" class="btn secondary">Clear</button>
+      <div class="generation-row">
+        <button id="generateSlidesBtn" class="btn" type="button">Generate Slides</button>
+        <button id="generateDocxBtn" class="btn" type="button">Generate DOCX</button>
+        <button id="generateBothBtn" class="btn" type="button">Generate both</button>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <button id="clearBtn" class="btn secondary" type="button">Clear</button>
       </div>
     </div>
 
     <div class="panel">
       <div class="section">Settings</div>
-      <div class="grid2">
-        <div class="field">
-          <label>Language</label>
-          <select id="language">
-            <option>English</option>
-            <option>Bengali</option>
-            <option>Hindi</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>Level</label>
-          <select id="level">
-            <option>Kid (Simple)</option>
-            <option selected>High School</option>
-            <option>Graduate</option>
-            <option>Postgraduate (PhD)</option>
-          </select>
-        </div>
+      <div class="field">
+        <label>Language</label>
+        <select id="language">
+          <option>English</option>
+          <option>Bengali</option>
+          <option>Hindi</option>
+        </select>
       </div>
-      <div class="grid2">
-        <div class="field">
-          <label>Textual density</label>
-          <select id="density">
-            <option value="1">Bare Bullets</option>
-            <option value="2" selected>Bullet Points</option>
-            <option value="3">Standard</option>
-            <option value="4">Full Narrative</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>Slides</label>
-          <input id="slides" type="number" min="3" max="30" value="6" />
-        </div>
-      </div>
-      <div class="grid2">
-        <div class="field">
-          <label>Words per slide</label>
-          <input id="words" type="number" min="25" max="150" step="5" value="70" />
-        </div>
-        <div class="field">
-          <label>Theme</label>
-          <select id="theme"></select>
-        </div>
-      </div>
-      <div class="grid2">
-        <div class="field">
-          <label>Font preset</label>
-          <select id="font"></select>
-        </div>
-        <div class="field">
-          <label>Auto export</label>
-          <div class="checkrow">
-            <label class="check"><input id="autoPptx" type="checkbox" checked />PPTX</label>
-            <label class="check"><input id="autoDocx" type="checkbox" checked />DOCX</label>
+
+      <details class="settings-panel">
+        <summary>Slide settings</summary>
+        <div class="settings-content">
+          <div class="grid2">
+            <div class="field">
+              <label>Level</label>
+              <select id="slideLevel">
+                <option>Kid (Simple)</option>
+                <option selected>High School</option>
+                <option>Graduate</option>
+                <option>Postgraduate (PhD)</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Textual density</label>
+              <select id="slideDensity">
+                <option value="1">Bare Bullets</option>
+                <option value="2" selected>Bullet Points</option>
+                <option value="3">Standard</option>
+                <option value="4">Full Narrative</option>
+              </select>
+            </div>
+          </div>
+          <div class="grid2">
+            <div class="field">
+              <label>Slides</label>
+              <input id="slideCount" type="number" min="3" max="30" value="6" />
+            </div>
+            <div class="field">
+              <label>Words per slide</label>
+              <input id="slideWords" type="number" min="25" max="150" step="5" value="70" />
+            </div>
+          </div>
+          <div class="grid2">
+            <div class="field">
+              <label>Theme</label>
+              <select id="slideTheme"></select>
+            </div>
+            <div class="field">
+              <label>Font preset</label>
+              <select id="slideFont"></select>
+            </div>
+          </div>
+          <div class="field">
+            <label>Diagram types</label>
+            <div class="checkrow">
+              <label class="check"><input id="typeTable" type="checkbox" checked />Table</label>
+              <label class="check"><input id="typeBoxes" type="checkbox" checked />Important words boxes</label>
+            </div>
+          </div>
+          <div class="field">
+            <label>Auto export</label>
+            <div class="checkrow">
+              <label class="check"><input id="autoPptx" type="checkbox" checked />PPTX</label>
+            </div>
+          </div>
+          <div class="field">
+            <label>Append links to PPTX</label>
+            <div class="checkrow">
+              <label class="check"><input id="appendLinksToSlides" type="checkbox" />Add a final links slide</label>
+            </div>
           </div>
         </div>
-      </div>
-      <div class="row" style="margin-top:-2px">
-        <button id="randomizeBtn" class="btn secondary" type="button">Randomize theme &amp; font</button>
-      </div>
-      <div class="field">
-        <label>Diagram types</label>
-        <div class="checkrow">
-          <label class="check"><input id="typeTable" type="checkbox" checked />Table</label>
-          <label class="check"><input id="typeBoxes" type="checkbox" checked />Important words boxes</label>
+      </details>
+
+      <details class="settings-panel">
+        <summary>DOCX settings</summary>
+        <div class="settings-content">
+          <div class="grid2">
+            <div class="field">
+              <label>Level</label>
+              <select id="docxLevel">
+                <option>Kid (Simple)</option>
+                <option>High School</option>
+                <option selected>Graduate</option>
+                <option>Postgraduate (PhD)</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Textual density</label>
+              <select id="docxDensity">
+                <option value="1">Bare Bullets</option>
+                <option value="2">Bullet Points</option>
+                <option value="3" selected>Standard</option>
+                <option value="4">Full Narrative</option>
+              </select>
+            </div>
+          </div>
+          <div class="grid2">
+            <div class="field">
+              <label>Sections</label>
+              <input id="docxSections" type="number" min="1" max="30" value="6" />
+            </div>
+            <div class="field">
+              <label>Words per section</label>
+              <input id="docxWords" type="number" min="50" max="300" step="10" value="120" />
+            </div>
+          </div>
+          <div class="grid2">
+            <div class="field">
+              <label>Theme</label>
+              <select id="docxTheme"></select>
+            </div>
+            <div class="field">
+              <label>Font preset</label>
+              <select id="docxFont"></select>
+            </div>
+          </div>
+          <div class="field">
+            <label>Auto export</label>
+            <div class="checkrow">
+              <label class="check"><input id="autoDocx" type="checkbox" checked />DOCX</label>
+            </div>
+          </div>
+          <div class="field">
+            <label>Append links to DOCX</label>
+            <div class="checkrow">
+              <label class="check"><input id="appendLinksToDocx" type="checkbox" />Add a final links section</label>
+            </div>
+          </div>
         </div>
+      </details>
+
+      <div class="row" style="margin:0 0 12px 0">
+        <button id="randomizeBtn" class="btn secondary" type="button">Randomize themes &amp; fonts</button>
       </div>
 
       <details class="advanced">
@@ -337,6 +528,22 @@
               <option value="gemini-3.1-pro-preview">gemini-3.1-pro-preview</option>
             </select>
           </div>
+          <div class="field">
+            <label>Generate image/reference links</label>
+            <div class="checkrow">
+              <label class="check"><input id="generateLinks" type="checkbox" checked />On by default</label>
+            </div>
+          </div>
+          <div class="grid2">
+            <div class="field">
+              <label>Image queries requested</label>
+              <input id="imageLinkCount" type="number" min="0" max="10" value="5" />
+            </div>
+            <div class="field">
+              <label>Reference links requested</label>
+              <input id="referenceLinkCount" type="number" min="0" max="10" value="3" />
+            </div>
+          </div>
         </div>
       </details>
 
@@ -348,21 +555,22 @@
       <div class="toolbar">
         <div>
           <div class="section">Workspace</div>
-          <h2 style="font-size:22px;margin-top:4px">Generate then export — no slide viewer</h2>
-          <div class="small" style="margin-top:4px">The main app keeps only the outline and export controls.</div>
+          <h2 style="font-size:22px;margin-top:4px">Generate slides or DOCX separately</h2>
+          <div class="small" style="margin-top:4px">The main app keeps the image-link suggestions and export controls.</div>
         </div>
         <div class="row">
           <button id="exportPptxBtn" class="btn secondary" disabled>Export PPTX</button>
           <button id="exportDocxBtn" class="btn secondary" disabled>Export DOCX</button>
         </div>
       </div>
+      <div id="apiAlert" class="alert hidden" role="alert"></div>
       <div id="status" class="status"><span class="pill">Idle</span><span id="statusText">Ready.</span></div>
     </section>
 
     <section class="card">
-      <div class="section">Generated outline</div>
-      <div id="slideSummary" class="small">No slides yet.</div>
-      <div id="slidesList" class="slides-list"></div>
+      <div class="section">Relevant image links</div>
+      <div id="slideSummary" class="small">No image links yet.</div>
+      <div id="slidesList" class="link-grid"></div>
     </section>
 
     <section class="card">
@@ -465,12 +673,42 @@ const FONT_PRESETS = {
 };
 
 
+
 const els = Object.fromEntries([...document.querySelectorAll("[id]")].map(el => [el.id, el]));
 const ctx = els.renderCanvas.getContext("2d");
-const state = { slides: [], pdfDoc: null, topic: "", busy: false, settings: {}, currentRequest: null };
+const state = {
+  slides: [],
+  docxDoc: null,
+  topic: "",
+  busy: false,
+  settings: {},
+  currentSlideRequest: null,
+  currentDocxRequest: null,
+  imageLinks: [],
+  currentImageRequest: null
+};
 
-for (const key of Object.keys(THEMES)) els.theme.add(new Option(key, key));
-for (const key of Object.keys(FONT_PRESETS)) els.font.add(new Option(key, key));
+for (const key of Object.keys(THEMES)) {
+  els.slideTheme.add(new Option(key, key));
+  els.docxTheme.add(new Option(key, key));
+}
+for (const key of Object.keys(FONT_PRESETS)) {
+  els.slideFont.add(new Option(key, key));
+  els.docxFont.add(new Option(key, key));
+}
+
+const generationButtons = {
+  slides: els.generateSlidesBtn,
+  docx: els.generateDocxBtn,
+  both: els.generateBothBtn
+};
+const buttonLabels = {
+  slides: generationButtons.slides.textContent,
+  docx: generationButtons.docx.textContent,
+  both: generationButtons.both.textContent
+};
+
+const themeQuery = window.matchMedia("(prefers-color-scheme: dark)");
 
 function esc(text) {
   return String(text)
@@ -488,7 +726,11 @@ function stamp() {
 }
 
 function filename(topic, ext) {
-  const short = String(topic || "Lecture").replace(/[\\/:*?"<>|]+/g, "").trim().slice(0, 20).replace(/\s+/g, "_") || "Lecture";
+  const short = String(topic || "Lecture")
+    .replace(/[\\/:*?"<>|]+/g, "")
+    .trim()
+    .slice(0, 20)
+    .replace(/\s+/g, "_") || "Lecture";
   return `${short}_${stamp()}.${ext}`;
 }
 
@@ -501,23 +743,91 @@ function setStatus(kind, text) {
   els.status.innerHTML = `<span class="pill">${esc(kind)}</span><span id="statusText">${esc(text)}</span>`;
 }
 
-function collect() {
+function setApiAlert(message) {
+  if (!els.apiAlert) return;
+  if (!message) {
+    els.apiAlert.textContent = "";
+    els.apiAlert.classList.add("hidden");
+    return;
+  }
+  els.apiAlert.textContent = message;
+  els.apiAlert.classList.remove("hidden");
+}
+
+function clearApiAlert() {
+  setApiAlert("");
+}
+
+function normalizeErrorMessage(err) {
+  return String(err?.message || err?.error?.message || err?.details || err || "Unknown error");
+}
+
+function isApiError(err) {
+  const msg = normalizeErrorMessage(err).toLowerCase();
+  return /resource exhausted|quota|rate limit|too many requests|429|insufficient|exceeded|billing|unavailable|overloaded/.test(msg);
+}
+
+function setGenerationBusy(activeKey = null) {
+  for (const [key, btn] of Object.entries(generationButtons)) {
+    btn.disabled = Boolean(activeKey && key !== activeKey);
+    btn.classList.toggle("working", key === activeKey);
+    btn.textContent = key === activeKey ? "Working..." : buttonLabels[key];
+  }
+}
+
+function applyAppTheme() {
+  document.documentElement.setAttribute(
+    "data-app-theme",
+    themeQuery.matches ? "dark" : "light"
+  );
+}
+
+function collectCommon() {
   return {
     apiKey: els.apiKey.value.trim(),
     model: els.model.value,
     topic: els.topic.value.trim(),
     extraInstructions: els.extraInstructions.value.trim(),
     language: els.language.value,
-    level: els.level.value,
-    density: Number(els.density.value),
-    slides: Number(els.slides.value),
-    words: Number(els.words.value),
-    theme: els.theme.value,
-    font: els.font.value,
+    generateLinks: els.generateLinks.checked,
+    imageLinkCount: Number(els.imageLinkCount.value),
+    referenceLinkCount: Number(els.referenceLinkCount.value)
+  };
+}
+
+function collectSlideSettings() {
+  return {
+    slideLevel: els.slideLevel.value,
+    slideDensity: Number(els.slideDensity.value),
+    slideCount: Number(els.slideCount.value),
+    slideWords: Number(els.slideWords.value),
+    slideTheme: els.slideTheme.value,
+    slideFont: els.slideFont.value,
     autoPptx: els.autoPptx.checked,
-    autoDocx: els.autoDocx.checked,
+    appendLinksToSlides: els.appendLinksToSlides.checked,
     typeTable: els.typeTable.checked,
-    typeBoxes: els.typeBoxes.checked,
+    typeBoxes: els.typeBoxes.checked
+  };
+}
+
+function collectDocxSettings() {
+  return {
+    docxLevel: els.docxLevel.value,
+    docxDensity: Number(els.docxDensity.value),
+    docxSections: Number(els.docxSections.value),
+    docxWords: Number(els.docxWords.value),
+    docxTheme: els.docxTheme.value,
+    docxFont: els.docxFont.value,
+    autoDocx: els.autoDocx.checked,
+    appendLinksToDocx: els.appendLinksToDocx.checked
+  };
+}
+
+function collect() {
+  return {
+    ...collectCommon(),
+    ...collectSlideSettings(),
+    ...collectDocxSettings()
   };
 }
 
@@ -559,23 +869,46 @@ function closeApiPanel() {
   }
 }
 
+function defaultTheme() {
+  return "Academic Default";
+}
+
 function applySettings() {
-  els.apiKey.value = state.settings.apiKey || "";
-  els.model.value = state.settings.model || "gemini-3-flash-preview";
-  els.topic.value = state.settings.topic || "";
-  els.extraInstructions.value = state.settings.extraInstructions || "";
-  els.language.value = state.settings.language || "English";
-  els.level.value = state.settings.level || "High School";
-  els.density.value = String(state.settings.density ?? 2);
-  els.slides.value = String(state.settings.slides ?? 6);
-  els.words.value = String(state.settings.words ?? 70);
-  els.theme.value = state.settings.theme || "Academic Default";
-  els.font.value = state.settings.font || "Academic Sans";
-  els.autoPptx.checked = state.settings.autoPptx ?? true;
-  els.autoDocx.checked = state.settings.autoDocx ?? true;
-  els.typeTable.checked = state.settings.typeTable ?? true;
-  els.typeBoxes.checked = state.settings.typeBoxes ?? true;
-  document.documentElement.style.setProperty("--accent", `#${(THEMES[els.theme.value] || THEMES["Academic Default"]).accent}`);
+  const s = state.settings || {};
+  els.apiKey.value = s.apiKey || "";
+  els.model.value = s.model || "gemini-3-flash-preview";
+  els.topic.value = s.topic || "";
+  els.extraInstructions.value = s.extraInstructions || "";
+  els.language.value = s.language || "English";
+
+  els.slideLevel.value = s.slideLevel || s.level || "High School";
+  els.slideDensity.value = String(s.slideDensity ?? s.density ?? 2);
+  els.slideCount.value = String(s.slideCount ?? s.slides ?? 6);
+  els.slideWords.value = String(s.slideWords ?? s.words ?? 70);
+  els.slideTheme.value = s.slideTheme || s.theme || defaultTheme();
+  els.slideFont.value = s.slideFont || s.font || "Academic Sans";
+  els.autoPptx.checked = s.autoPptx ?? true;
+  els.appendLinksToSlides.checked = s.appendLinksToSlides ?? false;
+  els.typeTable.checked = s.typeTable ?? true;
+  els.typeBoxes.checked = s.typeBoxes ?? true;
+
+  els.docxLevel.value = s.docxLevel || nextLevel(els.slideLevel.value);
+  els.docxDensity.value = String(s.docxDensity ?? Math.min(4, Number(els.slideDensity.value) + 1));
+  els.docxSections.value = String(s.docxSections ?? s.slides ?? 6);
+  els.docxWords.value = String(s.docxWords ?? Math.max(120, Number(els.slideWords.value) + 50));
+  els.docxTheme.value = s.docxTheme || s.theme || els.slideTheme.value || defaultTheme();
+  els.docxFont.value = s.docxFont || s.font || els.slideFont.value || "Academic Sans";
+  els.autoDocx.checked = s.autoDocx ?? true;
+  els.appendLinksToDocx.checked = s.appendLinksToDocx ?? false;
+
+  els.generateLinks.checked = s.generateLinks ?? true;
+  els.imageLinkCount.value = String(s.imageLinkCount ?? 5);
+  els.referenceLinkCount.value = String(s.referenceLinkCount ?? 3);
+
+  document.documentElement.style.setProperty(
+    "--accent",
+    `#${(THEMES[els.slideTheme.value] || THEMES[defaultTheme()]).accent}`
+  );
   updateApiUI();
 }
 
@@ -668,6 +1001,153 @@ function normalizeWords(items) {
   return out.length ? out : ["Key idea", "Example", "Application", "Review"];
 }
 
+function buildGoogleImageUrl(query) {
+  return `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(String(query || ""))}`;
+}
+
+function buildGoogleBooksUrl(query) {
+  return `https://books.google.com/books?q=${encodeURIComponent(String(query || ""))}`;
+}
+
+function buildCommonsUrl(query) {
+  return `https://commons.wikimedia.org/w/index.php?search=${encodeURIComponent(String(query || ""))}&title=Special:MediaSearch&go=Go&type=image`;
+}
+
+function buildReferenceUrl(kind, query) {
+  const safeKind = String(kind || "reference").toLowerCase();
+  if (safeKind === "book" || safeKind === "textbook") return buildGoogleBooksUrl(query);
+  if (safeKind === "photo") return buildCommonsUrl(query);
+  return `https://www.google.com/search?q=${encodeURIComponent(String(query || ""))}`;
+}
+
+function buildImageSchema(req) {
+  const googleCount = Math.max(0, Number(req?.imageLinkCount ?? 5));
+  const referenceCount = Math.max(0, Number(req?.referenceLinkCount ?? 3));
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: ["google_image_queries", "reference_ideas"],
+    properties: {
+      google_image_queries: {
+        type: "array",
+        minItems: googleCount,
+        maxItems: googleCount,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["label", "query"],
+          properties: {
+            label: { type: "string" },
+            query: { type: "string" }
+          }
+        }
+      },
+      reference_ideas: {
+        type: "array",
+        minItems: referenceCount,
+        maxItems: referenceCount,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["label", "query", "kind"],
+          properties: {
+            label: { type: "string" },
+            query: { type: "string" },
+            kind: { type: "string", enum: ["book", "photo", "reference"] }
+          }
+        }
+      }
+    }
+  };
+}
+
+function buildImagePrompt(req, slides) {
+  const slideNotes = (slides || []).slice(0, 8).map((s, i) => `${i + 1}. ${String(s?.title || "")} — ${String(s?.body || "")}`).join("\n");
+  const googleCount = Math.max(0, Number(req?.imageLinkCount ?? 5));
+  const referenceCount = Math.max(0, Number(req?.referenceLinkCount ?? 3));
+  return `
+Topic: ${req.topic}
+Language: ${req.language}
+Target level: ${req.level}
+Slides already generated: ${req.slides}
+
+Relevant slide notes:
+${slideNotes || "None"}
+
+Create image search suggestions for this topic.
+Return EXACTLY ${googleCount} google image search queries and EXACTLY ${referenceCount} reference ideas.
+The google image queries must be specific, searchable phrases for Google Images.
+The reference ideas should mix textbooks, famous reference pages, manufacturer pages, or specific photos depending on the topic.
+Return JSON only.
+`.trim();
+}
+
+function coerceImageLinks(parsed, req, slides) {
+  const fallback = fallbackImageLinks(req, slides);
+  const googleCount = Math.max(0, Number(req?.imageLinkCount ?? 5));
+  const referenceCount = Math.max(0, Number(req?.referenceLinkCount ?? 3));
+  const googleItems = Array.isArray(parsed?.google_image_queries) ? parsed.google_image_queries : fallback.google_image_queries;
+  const refItems = Array.isArray(parsed?.reference_ideas) ? parsed.reference_ideas : fallback.reference_ideas;
+
+  const out = [];
+  for (const item of googleItems.slice(0, googleCount)) {
+    const label = String(item?.label || item?.query || req.topic || "Google image search");
+    const query = String(item?.query || label);
+    out.push({
+      kind: "Google Images",
+      label,
+      query,
+      href: buildGoogleImageUrl(query)
+    });
+  }
+  for (const item of refItems.slice(0, referenceCount)) {
+    const kind = String(item?.kind || "reference").toLowerCase();
+    const label = String(item?.label || item?.query || req.topic || "Reference");
+    const query = String(item?.query || label);
+    const kindLabel = kind === "book" ? "Textbook" : kind === "photo" ? "Photo reference" : "Reference";
+    out.push({
+      kind: kindLabel,
+      label,
+      query,
+      href: buildReferenceUrl(kind, query)
+    });
+  }
+  return out;
+}
+
+function fallbackImageLinks(req, slides) {
+  const topic = String(req.topic || "Topic").trim();
+  const slideHints = (slides || []).map(s => String(s?.title || s?.body || topic).trim()).filter(Boolean);
+  const googleCount = Math.max(0, Number(req?.imageLinkCount ?? 5));
+  const referenceCount = Math.max(0, Number(req?.referenceLinkCount ?? 3));
+
+  const googleBase = [
+    `${topic} overview diagram`,
+    `${topic} key concepts`,
+    `${topic} examples`,
+    slideHints[0] || `${topic} illustration`,
+    slideHints[1] || `${topic} classroom visual`,
+    `${topic} labelled diagram`,
+    `${topic} infographic`,
+    `${topic} classroom chart`,
+    `${topic} concept map`,
+    `${topic} visual guide`
+  ];
+  const googleQueries = googleBase.slice(0, googleCount).map((query, i) => ({ label: `${topic} image search ${i + 1}`, query }));
+
+  const referenceBase = [
+    { label: `${topic} textbook search`, query: `${topic} textbook`, kind: "book" },
+    { label: `${topic} photo reference`, query: `${topic} photo`, kind: "photo" },
+    { label: `${topic} background reference`, query: `${topic} reference`, kind: "reference" },
+    { label: `${topic} authorative overview`, query: `${topic} overview`, kind: "reference" },
+    { label: `${topic} encyclopaedia search`, query: `${topic} encyclopedia`, kind: "reference" },
+    { label: `${topic} publication search`, query: `${topic} publication`, kind: "book" }
+  ];
+  return {
+    google_image_queries: googleQueries,
+    reference_ideas: referenceBase.slice(0, referenceCount)
+  };
+}
 function pickVariant(slide, idx) {
   const selected = [];
   if (els.typeTable.checked) selected.push("table");
@@ -691,8 +1171,8 @@ function renderTable(c, theme, spec, x, y, w, h) {
   while (cols.length < 3) cols.push("");
   const rows = normalizeRows(data.rows || [], title).slice(0, 6);
 
-  const titleFont = FONT_PRESETS[els.font.value]?.title_font || theme.title_font || "Noto Sans";
-  const bodyFont = FONT_PRESETS[els.font.value]?.body_font || theme.body_font || "Noto Sans";
+  const titleFont = FONT_PRESETS[els.slideFont.value]?.title_font || theme.title_font || "Noto Sans";
+  const bodyFont = FONT_PRESETS[els.slideFont.value]?.body_font || theme.body_font || "Noto Sans";
 
   const titleSize = fit(c, title, titleFont, w, 44, 34, 16, true);
   drawText(c, title, x, y, w, titleSize * 1.08, titleFont, titleSize, `#${theme.title}`, true);
@@ -723,8 +1203,8 @@ function renderBoxes(c, theme, spec, x, y, w, h) {
   const title = String(spec.title || "Diagram");
   const words = normalizeWords(data.words || data.items || []);
 
-  const titleFont = FONT_PRESETS[els.font.value]?.title_font || theme.title_font || "Noto Sans";
-  const bodyFont = FONT_PRESETS[els.font.value]?.body_font || theme.body_font || "Noto Sans";
+  const titleFont = FONT_PRESETS[els.slideFont.value]?.title_font || theme.title_font || "Noto Sans";
+  const bodyFont = FONT_PRESETS[els.slideFont.value]?.body_font || theme.body_font || "Noto Sans";
 
   const hSize = fit(c, heading, titleFont, w, 40, 34, 16, true);
   drawText(c, heading, x, y, w, hSize * 1.1, titleFont, hSize, `#${theme.title}`, true);
@@ -756,8 +1236,8 @@ function renderBoxes(c, theme, spec, x, y, w, h) {
 }
 
 function renderSlide(slide, idx) {
-  const theme = THEMES[els.theme.value] || THEMES["Academic Default"];
-  const preset = FONT_PRESETS[els.font.value] || FONT_PRESETS["Academic Sans"];
+  const theme = THEMES[els.slideTheme.value] || THEMES[defaultTheme()];
+  const preset = FONT_PRESETS[els.slideFont.value] || FONT_PRESETS["Academic Sans"];
   const spec = pickVariant(slide, idx);
 
   ctx.clearRect(0, 0, SLIDE_W, SLIDE_H);
@@ -783,11 +1263,11 @@ function renderSlide(slide, idx) {
   rr(ctx, bodyX, bodyY, bodyW, bodyH, 20, "#fff", "rgba(47,90,158,.12)", 1);
   rr(ctx, diagX, diagY, diagW, diagH, 20, "#fff", "rgba(47,90,158,.12)", 1);
 
-  const bodyTitle = String(slide.title || "Slide").toUpperCase();
+  const bodyTitle = "KEY IDEAS";
   const bodyTitleSize = fit(ctx, bodyTitle, preset.body_font || theme.body_font, bodyW - 36, 42, 28, 16, true);
   drawText(ctx, bodyTitle, bodyX + 18, bodyY + 18, bodyW - 36, bodyTitleSize * 1.08, preset.body_font || theme.body_font, bodyTitleSize, `#${theme.accent}`, true);
 
-  const bodySize = Number(els.density.value) >= 4 ? 22 : Number(els.density.value) === 3 ? 24 : 26;
+  const bodySize = Number(els.slideDensity.value) >= 4 ? 22 : Number(els.slideDensity.value) === 3 ? 24 : 26;
   drawText(ctx, String(slide.body || ""), bodyX + 18, bodyY + 72, bodyW - 36, bodySize * 1.35, preset.body_font || theme.body_font, bodySize, `#${theme.body}`);
 
   if (spec.kind === "boxes") {
@@ -803,22 +1283,102 @@ function renderSlide(slide, idx) {
   return els.renderCanvas.toDataURL("image/png");
 }
 
-function summary() {
-  if (!state.slides.length) {
-    els.slideSummary.textContent = "No slides yet.";
+function renderLinksSlide(req) {
+  const theme = THEMES[els.slideTheme.value] || THEMES[defaultTheme()];
+  const preset = FONT_PRESETS[els.slideFont.value] || FONT_PRESETS["Academic Sans"];
+  const links = Array.isArray(state.imageLinks) ? state.imageLinks : [];
+  const googleLinks = links.filter(item => String(item.kind || "").toLowerCase() === "google images");
+  const referenceLinks = links.filter(item => String(item.kind || "").toLowerCase() !== "google images");
+
+  ctx.clearRect(0, 0, SLIDE_W, SLIDE_H);
+  ctx.fillStyle = `#${theme.bg}`;
+  ctx.fillRect(0, 0, SLIDE_W, SLIDE_H);
+
+  const margin = 70;
+  rr(ctx, margin, 32, SLIDE_W - margin * 2, 82, 18, "#fff", "rgba(47,90,158,.12)", 1);
+
+  const title = "SOURCES & IMAGE LINKS";
+  const titleSize = fit(ctx, title, preset.title_font || theme.title_font, SLIDE_W - margin * 2 - 40, 52, 38, 22, true);
+  drawText(ctx, title, margin + 20, 48, SLIDE_W - margin * 2 - 40, titleSize * 1.1, preset.title_font || theme.title_font, titleSize, `#${theme.title}`, true);
+  drawText(ctx, "Generated before the slides so the export ends with source ideas and image searches.", margin + 20, 98, SLIDE_W - margin * 2 - 40, 18, preset.body_font || theme.body_font, 15, `#${theme.body}`);
+
+  const colGap = 26;
+  const colW = (SLIDE_W - margin * 2 - colGap) / 2;
+  const panelY = 150;
+  const panelH = 630;
+
+  const drawPanel = (x, heading, items, accentColor) => {
+    rr(ctx, x, panelY, colW, panelH, 20, "#fff", "rgba(47,90,158,.12)", 1);
+    rr(ctx, x + 18, panelY + 18, colW - 36, 48, 14, accentColor, accentColor, 0);
+    drawText(ctx, heading, x + 34, panelY + 29, colW - 68, 18, preset.body_font || theme.body_font, 18, "#fff", true);
+    drawText(ctx, `${items.length} item${items.length === 1 ? "" : "s"}`, x + colW - 150, panelY + 29, 120, 18, preset.body_font || theme.body_font, 14, "#fff", true);
+
+    const innerX = x + 20;
+    const innerY = panelY + 82;
+    const innerW = colW - 40;
+    const cardH = Math.max(78, Math.min(115, Math.floor((panelH - 112 - Math.max(items.length - 1, 0) * 10) / Math.max(items.length, 1))));
+    let y = innerY;
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      rr(ctx, innerX, y, innerW, cardH, 16, `#${theme.body_fill}`, `rgba(47,90,158,.14)`, 1);
+      const chip = item.kind || "Link";
+      ctx.font = `700 13px ${preset.body_font || theme.body_font}`;
+      ctx.fillStyle = `#${theme.accent}`;
+      ctx.fillText(chip, innerX + 14, y + 12);
+
+      const label = `${i + 1}. ${String(item.label || item.query || "Link")}`;
+      const labelSize = fit(ctx, label, preset.body_font || theme.body_font, innerW - 28, 26, 20, 13, true);
+      drawText(ctx, label, innerX + 14, y + 34, innerW - 28, labelSize * 1.08, preset.body_font || theme.body_font, labelSize, `#${theme.title}`, true);
+
+      const query = String(item.query || "");
+      const querySize = fit(ctx, query, preset.body_font || theme.body_font, innerW - 28, 24, 16, 11);
+      drawText(ctx, query, innerX + 14, y + 62, innerW - 28, querySize * 1.08, preset.body_font || theme.body_font, querySize, `#${theme.body}`);
+
+      y += cardH + 10;
+    }
+
+    if (!items.length) {
+      drawText(ctx, "No links were requested.", innerX + 14, innerY, innerW - 28, 18, preset.body_font || theme.body_font, 16, `#${theme.body}`);
+    }
+  };
+
+  drawPanel(margin, "Google image searches", googleLinks, `#${theme.accent}`);
+  drawPanel(margin + colW + colGap, "Reference links", referenceLinks, `#${theme.title}`);
+
+  ctx.fillStyle = `#${theme.accent}`;
+  ctx.font = `700 18px ${preset.body_font || theme.body_font}`;
+  ctx.fillText(`Total links: ${links.length}`, margin, SLIDE_H - 44);
+
+  return els.renderCanvas.toDataURL("image/png");
+}
+
+function renderImageLinks() {
+  const googleCount = state.imageLinks.filter(item => String(item.kind || "").toLowerCase() === "google images").length;
+  const referenceCount = state.imageLinks.length - googleCount;
+
+  if (!state.imageLinks.length) {
+    els.slideSummary.textContent = state.settings.generateLinks === false ? "Image/reference lookups are turned off." : "No image links yet.";
     els.slidesList.innerHTML = "";
     return;
   }
-  els.slideSummary.textContent = `${state.slides.length} slides ready for export.`;
-  els.slidesList.innerHTML = state.slides.map((s, i) => `
-    <div class="slide-item">
-      <h4>${i + 1}. ${esc(s.title || `Slide ${i + 1}`)}</h4>
-      <p>${esc(String(s.body || "").slice(0, 120))}${String(s.body || "").length > 120 ? "…" : ""}</p>
-    </div>
+
+  els.slideSummary.textContent = `${state.imageLinks.length} links ready: ${googleCount} Google Image searches and ${referenceCount} reference links.`;
+
+  els.slidesList.innerHTML = state.imageLinks.map((item, i) => `
+    <a class="link-item" href="${esc(item.href)}" target="_blank" rel="noopener noreferrer">
+      <span class="link-chip">${esc(item.kind || "Link")}</span>
+      <h4>${i + 1}. ${esc(item.label || item.query || "Image link")}</h4>
+      <p>${esc(item.query || "")}</p>
+      <span>Open link</span>
+    </a>
   `).join("");
 }
 
-function fallback(req) {
+function summary() {
+  renderImageLinks();
+}
+
+function fallbackSlides(req) {
   const steps = ["Overview", "Core ideas", "Examples", "Applications", "Review", "Summary"];
   return Array.from({ length: req.slides }, (_, i) => {
     const title = `${req.topic} - ${steps[i % steps.length]}`;
@@ -853,7 +1413,7 @@ function fallback(req) {
   });
 }
 
-function buildSchema(slideCount) {
+function buildSlideSchema(slideCount) {
   return {
     type: "array",
     minItems: slideCount,
@@ -903,7 +1463,7 @@ function buildSchema(slideCount) {
   };
 }
 
-function buildPrompt(req) {
+function buildSlidePrompt(req) {
   return `
 Topic: ${req.topic}
 Language: ${req.language}
@@ -919,13 +1479,68 @@ Reply with JSON only.
 `.trim();
 }
 
+function coerceSlides(parsed, req) {
+  if (Array.isArray(parsed)) return parsed;
+  if (parsed && typeof parsed === "object") {
+    if (Array.isArray(parsed.slides)) return parsed.slides;
+    if (Array.isArray(parsed.items)) return parsed.items;
+  }
+  return fallbackSlides(req);
+}
+
+async function ensureImageLinks(req, slides) {
+  if (!req?.generateLinks) {
+    state.imageLinks = [];
+    state.currentImageRequest = null;
+    renderImageLinks();
+    return [];
+  }
+  if (state.currentImageRequest?.topic === req.topic && state.imageLinks.length) {
+    return state.imageLinks;
+  }
+  return generateImageLinks(req, slides);
+}
+
+async function generateImageLinks(req, slides) {
+  state.currentImageRequest = req;
+  setStatus("Working", "Finding relevant image links...");
+  clearApiAlert();
+  log(`Generating image link suggestions for "${req.topic}" using ${req.model}.`);
+  let parsed;
+  try {
+    const ai = new GoogleGenAI({ apiKey: req.apiKey });
+    const response = await ai.models.generateContent({
+      model: req.model,
+      contents: buildImagePrompt(req, slides),
+      config: {
+        responseMimeType: "application/json",
+        responseJsonSchema: buildImageSchema(req)
+      }
+    });
+    parsed = extractJsonPayload(response);
+    log("Image-link JSON received.");
+  } catch (err) {
+    const msg = normalizeErrorMessage(err);
+    log(`Image link generation failed, using fallback: ${msg}`);
+    if (isApiError(err)) {
+      setApiAlert(`Gemini API error while finding image links: ${msg}`);
+      setStatus("API error", msg);
+    }
+    parsed = fallbackImageLinks(req, slides);
+  }
+
+  state.imageLinks = coerceImageLinks(parsed, req, slides);
+  renderImageLinks();
+  return state.imageLinks;
+}
+
 function nextLevel(level) {
   const order = ["Kid (Simple)", "High School", "Graduate", "Postgraduate (PhD)"];
   const idx = order.indexOf(level);
   return order[Math.min(Math.max(idx, 0) + 1, order.length - 1)];
 }
 
-function buildPdfSchema(sectionCount) {
+function buildDocxSchema(sectionCount) {
   return {
     type: "object",
     additionalProperties: false,
@@ -966,42 +1581,34 @@ function buildPdfSchema(sectionCount) {
   };
 }
 
-function buildPdfPrompt(req) {
+function buildDocxPrompt(req) {
   return `
 Topic: ${req.topic}
 Language: ${req.language}
-Target level: ${nextLevel(req.level)}
-Textual density: ${Math.min(4, Number(req.density) + 1)}
-Sections to generate: ${req.slides}
+Target level: ${req.level}
+Textual density: ${req.density}
+Sections to generate: ${req.sections}
+Approximate words per section: ${req.words}
 
 Additional instructions from the user: ${req.extraInstructions || "None"}
 
 Create a detailed document for DOCX export. It should be slightly more advanced and more detailed than the slide deck.
 Do not use headings like "Lecture notes".
-Write in polished prose with a brief summary, ${req.slides} detailed sections, and a short closing paragraph.
+Write in polished prose with a brief summary, ${req.sections} detailed sections, and a short closing paragraph.
 Each section should include heading, overview in full sentences, 3-5 bullet points, one concrete example, and a compact 3-column mini_table.
 Return JSON only.
 `.trim();
 }
 
-function coerceSlides(parsed, req) {
-  if (Array.isArray(parsed)) return parsed;
-  if (parsed && typeof parsed === "object") {
-    if (Array.isArray(parsed.slides)) return parsed.slides;
-    if (Array.isArray(parsed.items)) return parsed.items;
-  }
-  return fallback(req);
-}
-
-function fallbackPdfDoc(req) {
+function fallbackDocxDoc(req) {
   const steps = ["Introduction", "Foundations", "Mechanisms", "Applications", "Interpretation", "Conclusion"];
   return {
     title: req.topic,
-    subtitle: `${req.language} • ${nextLevel(req.level)} • Detailed document`,
+    subtitle: `${req.language} • ${req.level} • Detailed document`,
     summary: `${req.topic} explained in a fuller, document-style format with slightly higher detail than the slide deck.`,
-    sections: Array.from({ length: req.slides }, (_, i) => ({
+    sections: Array.from({ length: req.sections }, (_, i) => ({
       heading: `${steps[i % steps.length]} for ${req.topic}`,
-      overview: `${req.topic} in ${req.language}, written for ${nextLevel(req.level).toLowerCase()} study. The discussion goes beyond the slide version and adds context, nuance, and examples.`,
+      overview: `${req.topic} in ${req.language}, written for ${req.level.toLowerCase()} study. The discussion goes beyond the slide version and adds context, nuance, and examples.`,
       bullets: [
         `Core idea: ${req.topic} at a deeper conceptual level.`,
         `Why it matters in ${req.language} study and classroom discussion.`,
@@ -1019,18 +1626,18 @@ function fallbackPdfDoc(req) {
   };
 }
 
-function coercePdfDoc(parsed, req) {
+function coerceDocxDoc(parsed, req) {
   if (parsed && typeof parsed === "object") {
     const sections = Array.isArray(parsed.sections) ? parsed.sections : [];
     return {
       title: String(parsed.title || req.topic || "Document"),
       subtitle: String(parsed.subtitle || `${req.language} • ${req.level} • Detailed document`),
       summary: String(parsed.summary || `${req.topic} overview.`),
-      sections: sections.length ? sections : fallbackPdfDoc(req).sections,
+      sections: sections.length ? sections : fallbackDocxDoc(req).sections,
       closing: String(parsed.closing || `This closes the detailed discussion of ${req.topic}.`)
     };
   }
-  return fallbackPdfDoc(req);
+  return fallbackDocxDoc(req);
 }
 
 function cleanResponseText(text) {
@@ -1063,48 +1670,129 @@ function extractJsonPayload(response) {
   throw new Error("Model response did not contain valid JSON.");
 }
 
-function buildRequest() {
-  const settings = collect();
+function buildSlideRequest() {
+  const common = collectCommon();
+  const slides = collectSlideSettings();
   return {
-    topic: settings.topic,
-    language: settings.language,
-    level: settings.level,
-    density: settings.density,
-    slides: Math.max(3, Math.min(30, Number(settings.slides) || 6)),
-    words: Math.max(25, Math.min(150, Number(settings.words) || 70)),
-    model: settings.model
+    ...common,
+    level: slides.slideLevel,
+    density: slides.slideDensity,
+    slides: Math.max(3, Math.min(30, slides.slideCount || 6)),
+    words: Math.max(25, Math.min(150, slides.slideWords || 70)),
+    theme: slides.slideTheme,
+    font: slides.slideFont,
+    typeTable: slides.typeTable,
+    typeBoxes: slides.typeBoxes,
+    autoPptx: slides.autoPptx,
+    appendLinksToSlides: slides.appendLinksToSlides,
+    model: common.model,
+    extraInstructions: common.extraInstructions
   };
 }
 
-async function generatePdfDoc(req) {
-  setStatus("Working", "Generating detailed DOCX document...");
-  log(`Generating DOCX document for "${req.topic}" with a separate prompt.`);
+function buildDocxRequest() {
+  const common = collectCommon();
+  const docx = collectDocxSettings();
+  return {
+    ...common,
+    level: docx.docxLevel,
+    density: docx.docxDensity,
+    sections: Math.max(1, Math.min(30, docx.docxSections || 6)),
+    words: Math.max(50, Math.min(300, docx.docxWords || 120)),
+    theme: docx.docxTheme,
+    font: docx.docxFont,
+    autoDocx: docx.autoDocx,
+    appendLinksToDocx: docx.appendLinksToDocx,
+    model: common.model,
+    extraInstructions: common.extraInstructions
+  };
+}
+
+async function generateSlidesContent(req) {
+  state.currentSlideRequest = req;
+  setStatus("Working", "Generating slide JSON with Gemini...");
+  log(`Generating ${req.slides} slides for "${req.topic}" using ${req.model}.`);
+  let parsed;
   try {
-    const ai = new GoogleGenAI({ apiKey: state.settings.apiKey });
+    const ai = new GoogleGenAI({ apiKey: req.apiKey });
     const response = await ai.models.generateContent({
       model: req.model,
-      contents: buildPdfPrompt(req),
+      contents: buildSlidePrompt(req),
       config: {
         responseMimeType: "application/json",
-        responseJsonSchema: buildPdfSchema(req.slides)
+        responseJsonSchema: buildSlideSchema(req.slides)
+      }
+    });
+    parsed = extractJsonPayload(response);
+    log("Slide JSON received.");
+  } catch (err) {
+    const msg = normalizeErrorMessage(err);
+    log(`Slide generation failed, using fallback: ${msg}`);
+    if (isApiError(err)) {
+      setApiAlert(`Gemini API error while generating slides: ${msg}`);
+      setStatus("API error", msg);
+    }
+    parsed = fallbackSlides(req);
+  }
+
+  const arr = coerceSlides(parsed, req);
+  state.slides = arr.slice(0, req.slides).map((s, i) => ({
+    title: String(s?.title || `${req.topic} ${i + 1}`),
+    body: String(s?.body || `${req.topic} overview in ${req.language}.`),
+    diagram_brief: String(s?.diagram_brief || `${req.topic}. Classroom visual.`),
+    diagram_specs: Array.isArray(s?.diagram_specs) ? s.diagram_specs : fallbackSlides(req)[0].diagram_specs
+  }));
+
+  while (state.slides.length < req.slides) {
+    const i = state.slides.length;
+    state.slides.push({
+      title: `${req.topic} ${i + 1}`,
+      body: `${req.topic} overview in ${req.language}.`,
+      diagram_brief: `${req.topic}. Classroom visual.`,
+      diagram_specs: fallbackSlides(req)[0].diagram_specs
+    });
+  }
+  summary();
+  els.exportPptxBtn.disabled = false;
+  log(`Prepared ${state.slides.length} slides.`);
+  return state.slides;
+}
+
+async function generateDocxContent(req) {
+  state.currentDocxRequest = req;
+  setStatus("Working", "Generating DOCX document JSON with Gemini...");
+  log(`Generating DOCX document for "${req.topic}" using ${req.model}.`);
+  try {
+    const ai = new GoogleGenAI({ apiKey: req.apiKey });
+    const response = await ai.models.generateContent({
+      model: req.model,
+      contents: buildDocxPrompt(req),
+      config: {
+        responseMimeType: "application/json",
+        responseJsonSchema: buildDocxSchema(req.sections)
       }
     });
     const parsed = extractJsonPayload(response);
-    state.pdfDoc = coercePdfDoc(parsed, req);
+    state.docxDoc = coerceDocxDoc(parsed, req);
     log("DOCX document JSON received.");
   } catch (err) {
-    log(`DOCX document generation failed, using fallback: ${err?.message || err}`);
-    state.pdfDoc = fallbackPdfDoc(req);
+    const msg = normalizeErrorMessage(err);
+    log(`DOCX generation failed, using fallback: ${msg}`);
+    if (isApiError(err)) {
+      setApiAlert(`Gemini API error while generating DOCX: ${msg}`);
+      setStatus("API error", msg);
+    }
+    state.docxDoc = fallbackDocxDoc(req);
   }
-  return state.pdfDoc;
+  els.exportDocxBtn.disabled = false;
+  return state.docxDoc;
 }
 
-async function generateSlides() {
+async function runWorkflow(kind) {
   if (state.busy) return;
   state.busy = true;
-  els.generateBtn.disabled = true;
-  els.exportPptxBtn.disabled = true;
-  els.exportDocxBtn.disabled = true;
+  setGenerationBusy(kind);
+  clearApiAlert();
 
   try {
     state.settings = collect();
@@ -1121,70 +1809,59 @@ async function generateSlides() {
     save();
     state.topic = state.settings.topic;
 
-    const req = buildRequest();
-    state.currentRequest = req;
+    const slideReq = buildSlideRequest();
+    const docxReq = buildDocxRequest();
 
-    setStatus("Working", "Generating slide JSON with Gemini...");
-    log(`Generating ${req.slides} slides for "${req.topic}" using ${req.model}.`);
-
-    let parsed;
-    try {
-      const ai = new GoogleGenAI({ apiKey: state.settings.apiKey });
-      const response = await ai.models.generateContent({
-        model: req.model,
-        contents: buildPrompt(req),
-        config: {
-          responseMimeType: "application/json",
-          responseJsonSchema: buildSchema(req.slides)
-        }
-      });
-      parsed = extractJsonPayload(response);
-      log("Slide JSON received.");
-    } catch (err) {
-      log(`Slide generation failed, using fallback: ${err?.message || err}`);
-      parsed = fallback(req);
+    if (slideReq.generateLinks) {
+      await generateImageLinks(slideReq, []);
+    } else {
+      state.imageLinks = [];
+      state.currentImageRequest = null;
+      renderImageLinks();
     }
 
-    const arr = coerceSlides(parsed, req);
-    state.slides = arr.slice(0, req.slides).map((s, i) => ({
-      title: String(s?.title || `${req.topic} ${i + 1}`),
-      body: String(s?.body || `${req.topic} overview in ${req.language}.`),
-      diagram_brief: String(s?.diagram_brief || `${req.topic}. Classroom visual.`),
-      diagram_specs: Array.isArray(s?.diagram_specs) ? s.diagram_specs : fallback(req)[0].diagram_specs
-    }));
-
-    while (state.slides.length < req.slides) {
-      const i = state.slides.length;
-      state.slides.push({
-        title: `${req.topic} ${i + 1}`,
-        body: `${req.topic} overview in ${req.language}.`,
-        diagram_brief: `${req.topic}. Classroom visual.`,
-        diagram_specs: fallback(req)[0].diagram_specs
-      });
+    if (kind === "slides" || kind === "both") {
+      await generateSlidesContent(slideReq);
+      if (state.settings.autoPptx) {
+        await exportPptx();
+      }
     }
 
-    await generatePdfDoc(req);
+    if (kind === "docx" || kind === "both") {
+      await generateDocxContent(docxReq);
+      if (state.settings.autoDocx) {
+        await exportDocx();
+      }
+    }
 
-    summary();
-    els.exportPptxBtn.disabled = false;
-    els.exportDocxBtn.disabled = false;
-    setStatus("Ready", "Slides and DOCX document generated.");
-    log(`Prepared ${state.slides.length} slides.`);
+    if (slideReq.generateLinks && !state.imageLinks.length) {
+      await generateImageLinks(slideReq, state.slides.length ? state.slides : fallbackSlides(slideReq));
+    }
 
-    if (state.settings.autoPptx) await exportPptx();
-    if (state.settings.autoDocx) await exportPdf();
+    if (kind === "slides") {
+      setStatus("Ready", "Slides generated.");
+    } else if (kind === "docx") {
+      setStatus("Ready", "DOCX document generated.");
+    } else {
+      setStatus("Ready", "Slides and DOCX document generated.");
+    }
   } catch (err) {
     setStatus("Error", err?.message || String(err));
     log(`ERROR: ${err?.stack || err}`);
   } finally {
-    els.generateBtn.disabled = false;
     state.busy = false;
+    setGenerationBusy(null);
   }
 }
 
 async function exportPptx() {
   if (!state.slides.length) return;
   setStatus("Working", "Building PPTX...");
+
+  const req = state.currentSlideRequest || buildSlideRequest();
+  if (req.generateLinks && !state.imageLinks.length) {
+    await generateImageLinks(req, state.slides);
+  }
 
   const pptx = new PptxGenJS();
   pptx.layout = "LAYOUT_WIDE";
@@ -1198,25 +1875,32 @@ async function exportPptx() {
     slide.addImage({ data: img, x: 0, y: 0, w: PPTX_W, h: PPTX_H });
   }
 
+  if (req.appendLinksToSlides && req.generateLinks && state.imageLinks.length) {
+    const img = renderLinksSlide(req);
+    const slide = pptx.addSlide();
+    slide.addImage({ data: img, x: 0, y: 0, w: PPTX_W, h: PPTX_H });
+  }
+
   const file = filename(state.topic, "pptx");
   await pptx.writeFile({ fileName: file });
   log(`PPTX exported: ${file}`);
   setStatus("Ready", `PPTX exported: ${file}`);
 }
 
-async function exportPdf() {
-  if (!state.slides.length) return;
-  if (!state.pdfDoc || state.currentRequest?.topic !== state.topic) {
-    const req = state.currentRequest || buildRequest();
-    state.pdfDoc = await generatePdfDoc(req);
+async function exportDocx() {
+  if (!state.docxDoc || state.currentDocxRequest?.topic !== state.topic) {
+    const req = state.currentDocxRequest || buildDocxRequest();
+    state.docxDoc = await generateDocxContent(req);
   }
 
   setStatus("Working", "Building DOCX document...");
-
-  const req = state.currentRequest || buildRequest();
-  const theme = THEMES[els.theme.value] || THEMES["Academic Default"];
-  const titleFont = FONT_PRESETS[els.font.value]?.title_font || theme.title_font || "Noto Sans";
-  const bodyFont = FONT_PRESETS[els.font.value]?.body_font || theme.body_font || "Noto Sans";
+  const req = state.currentDocxRequest || buildDocxRequest();
+  if (req.generateLinks && !state.imageLinks.length) {
+    await generateImageLinks(req, state.slides.length ? state.slides : fallbackSlides(req));
+  }
+  const theme = THEMES[req.theme] || THEMES[defaultTheme()];
+  const titleFont = FONT_PRESETS[req.font]?.title_font || theme.title_font || "Noto Sans";
+  const bodyFont = FONT_PRESETS[req.font]?.body_font || theme.body_font || "Noto Sans";
 
   const paragraph = (text, options = {}) => new Paragraph({
     children: [new TextRun({
@@ -1247,36 +1931,36 @@ async function exportPdf() {
     })],
   });
 
-  const sectionChildren = [];
-  sectionChildren.push(new Paragraph({
+  const children = [];
+  children.push(new Paragraph({
     heading: HeadingLevel.TITLE,
     alignment: AlignmentType.CENTER,
     spacing: { after: 120 },
     children: [new TextRun({
-      text: state.pdfDoc.title || req.topic,
+      text: state.docxDoc.title || req.topic,
       bold: true,
       size: 34,
       font: titleFont,
       color: theme.title,
     })],
   }));
-  sectionChildren.push(paragraph(state.pdfDoc.subtitle || `${req.language} • ${req.level} • Detailed document`, {
+  children.push(paragraph(state.docxDoc.subtitle || `${req.language} • ${req.level} • Detailed document`, {
     alignment: AlignmentType.CENTER,
     size: 20,
     font: bodyFont,
     color: theme.accent,
     spacing: { after: 180 },
   }));
-  sectionChildren.push(paragraph(state.pdfDoc.summary, {
+  children.push(paragraph(state.docxDoc.summary, {
     size: 22,
     font: bodyFont,
     color: theme.body,
     spacing: { after: 120 },
   }));
 
-  for (let i = 0; i < state.pdfDoc.sections.length; i++) {
-    const section = state.pdfDoc.sections[i];
-    sectionChildren.push(new Paragraph({
+  for (let i = 0; i < state.docxDoc.sections.length; i++) {
+    const section = state.docxDoc.sections[i];
+    children.push(new Paragraph({
       heading: HeadingLevel.HEADING_1,
       spacing: { before: 180, after: 100 },
       children: [new TextRun({
@@ -1287,15 +1971,15 @@ async function exportPdf() {
         color: theme.title,
       })],
     }));
-    sectionChildren.push(paragraph(section.overview, { size: 22, spacing: { after: 80 } }));
+    children.push(paragraph(section.overview, { size: 22, spacing: { after: 80 } }));
     for (const item of section.bullets || []) {
-      sectionChildren.push(new Paragraph({
+      children.push(new Paragraph({
         bullet: { level: 0 },
         children: [new TextRun({ text: String(item || ""), size: 20, font: bodyFont, color: theme.body })],
         spacing: { after: 40 },
       }));
     }
-    sectionChildren.push(paragraph(`Example: ${String(section.example || "")}`, {
+    children.push(paragraph(`Example: ${String(section.example || "")}`, {
       bold: true,
       size: 20,
       spacing: { after: 80 },
@@ -1303,7 +1987,7 @@ async function exportPdf() {
       color: theme.accent,
     }));
 
-    const tableRows = [
+    const rows = [
       new TableRow({
         children: [
           tableCell("Aspect", true),
@@ -1311,7 +1995,7 @@ async function exportPdf() {
           tableCell("Note", true),
         ],
       }),
-      ...(section.mini_table || []).map((row, idx) => new TableRow({
+      ...(section.mini_table || []).map(row => new TableRow({
         children: [
           tableCell(Array.isArray(row) ? row[0] : ""),
           tableCell(Array.isArray(row) ? row[1] : ""),
@@ -1320,8 +2004,8 @@ async function exportPdf() {
       }))
     ];
 
-    sectionChildren.push(new Table({
-      rows: tableRows,
+    children.push(new Table({
+      rows,
       width: { size: 100, type: WidthType.PERCENTAGE },
       borders: {
         top: { style: BorderStyle.SINGLE, size: 1, color: theme.line || "D6DEEB" },
@@ -1333,17 +2017,57 @@ async function exportPdf() {
       },
     }));
 
-    if (i < state.pdfDoc.sections.length - 1) {
-      sectionChildren.push(new Paragraph({ text: "", spacing: { after: 140 } }));
+    if (i < state.docxDoc.sections.length - 1) {
+      children.push(new Paragraph({ text: "", spacing: { after: 140 } }));
     }
   }
 
-  sectionChildren.push(paragraph(state.pdfDoc.closing, {
+  children.push(paragraph(state.docxDoc.closing, {
     size: 22,
     spacing: { before: 120 },
     font: bodyFont,
     color: theme.body,
   }));
+
+  if (req.appendLinksToDocx && req.generateLinks && state.imageLinks.length) {
+    children.push(new Paragraph({
+      heading: HeadingLevel.HEADING_1,
+      spacing: { before: 240, after: 120 },
+      children: [new TextRun({
+        text: "Sources & image links",
+        bold: true,
+        size: 28,
+        font: titleFont,
+        color: theme.title,
+      })],
+    }));
+
+    children.push(paragraph("These search phrases and reference ideas were generated before the main content and can be used to verify visuals or extend the topic.", {
+      size: 20,
+      spacing: { after: 100 },
+      font: bodyFont,
+      color: theme.body,
+    }));
+
+    for (const item of state.imageLinks) {
+      children.push(new Paragraph({
+        bullet: { level: 0 },
+        spacing: { after: 40 },
+        children: [new TextRun({
+          text: `${String(item.kind || "Link")}: ${String(item.label || item.query || "Link")} — ${String(item.query || item.href || "")}`,
+          size: 18,
+          font: bodyFont,
+          color: theme.body,
+        })],
+      }));
+      children.push(paragraph(String(item.href || ""), {
+        size: 16,
+        font: bodyFont,
+        color: theme.accent,
+        spacing: { after: 40 },
+      }));
+    }
+  }
 
   const doc = new Document({
     styles: {
@@ -1367,7 +2091,7 @@ async function exportPdf() {
           },
         },
       },
-      children: sectionChildren,
+      children,
     }],
   });
 
@@ -1388,47 +2112,91 @@ async function exportPdf() {
 
 function clearAll() {
   state.slides = [];
-  state.pdfDoc = null;
-  state.currentRequest = null;
+  state.docxDoc = null;
+  state.currentSlideRequest = null;
+  state.currentDocxRequest = null;
+  state.currentImageRequest = null;
+  state.imageLinks = [];
   state.topic = "";
   els.topic.value = "";
-  summary();
   els.exportPptxBtn.disabled = true;
   els.exportDocxBtn.disabled = true;
+  clearApiAlert();
+  summary();
   setStatus("Idle", "Ready.");
-  log("Cleared generated slides.");
+  log("Cleared generated slides, DOCX, and image links.");
 }
 
 function sync() {
   save();
-  document.documentElement.style.setProperty("--accent", `#${(THEMES[els.theme.value] || THEMES["Academic Default"]).accent}`);
+  document.documentElement.style.setProperty(
+    "--accent",
+    `#${(THEMES[els.slideTheme.value] || THEMES[defaultTheme()]).accent}`
+  );
+  if (!els.generateLinks.checked) {
+    state.imageLinks = [];
+    state.currentImageRequest = null;
+  }
+  summary();
   updateApiUI();
 }
 
 function randomizeThemeFont() {
   const themeNames = Object.keys(THEMES);
   const fontNames = Object.keys(FONT_PRESETS);
-  const nextTheme = themeNames[Math.floor(Math.random() * themeNames.length)];
-  const nextFont = fontNames[Math.floor(Math.random() * fontNames.length)];
-  els.theme.value = nextTheme;
-  els.font.value = nextFont;
-  document.documentElement.style.setProperty("--accent", `#${THEMES[nextTheme].accent}`);
+  const nextSlideTheme = themeNames[Math.floor(Math.random() * themeNames.length)];
+  const nextSlideFont = fontNames[Math.floor(Math.random() * fontNames.length)];
+  const nextDocxTheme = themeNames[Math.floor(Math.random() * themeNames.length)];
+  const nextDocxFont = fontNames[Math.floor(Math.random() * fontNames.length)];
+  els.slideTheme.value = nextSlideTheme;
+  els.slideFont.value = nextSlideFont;
+  els.docxTheme.value = nextDocxTheme;
+  els.docxFont.value = nextDocxFont;
+  document.documentElement.style.setProperty("--accent", `#${THEMES[nextSlideTheme].accent}`);
   save();
   summary();
-  log(`Randomized theme to "${nextTheme}" and font to "${nextFont}".`);
+  log(`Randomized slide theme to "${nextSlideTheme}" and DOCX theme to "${nextDocxTheme}".`);
 }
 
 function bindUi() {
-  for (const id of ["model", "topic", "extraInstructions", "language", "level", "density", "slides", "words", "theme", "font", "autoPptx", "autoDocx", "typeTable", "typeBoxes"]) {
+  for (const id of [
+    "model",
+    "topic",
+    "extraInstructions",
+    "language",
+    "slideLevel",
+    "slideDensity",
+    "slideCount",
+    "slideWords",
+    "slideTheme",
+    "slideFont",
+    "docxLevel",
+    "docxDensity",
+    "docxSections",
+    "docxWords",
+    "docxTheme",
+    "docxFont",
+    "autoPptx",
+    "appendLinksToSlides",
+    "autoDocx",
+    "appendLinksToDocx",
+    "typeTable",
+    "typeBoxes",
+    "generateLinks",
+    "imageLinkCount",
+    "referenceLinkCount"
+  ]) {
     els[id].addEventListener("input", sync);
     els[id].addEventListener("change", sync);
   }
   els.apiKey.addEventListener("input", updateApiUI);
-  els.generateBtn.addEventListener("click", generateSlides);
+  els.generateSlidesBtn.addEventListener("click", () => runWorkflow("slides"));
+  els.generateDocxBtn.addEventListener("click", () => runWorkflow("docx"));
+  els.generateBothBtn.addEventListener("click", () => runWorkflow("both"));
   els.clearBtn.addEventListener("click", clearAll);
   els.randomizeBtn.addEventListener("click", randomizeThemeFont);
   els.exportPptxBtn.addEventListener("click", exportPptx);
-  els.exportDocxBtn.addEventListener("click", exportPdf);
+  els.exportDocxBtn.addEventListener("click", exportDocx);
   els.changeApiBtn.addEventListener("click", openApiPanel);
   els.saveApiBtn.addEventListener("click", () => {
     save();
@@ -1440,12 +2208,15 @@ function bindUi() {
     closeApiPanel();
     updateApiUI();
   });
+  themeQuery.addEventListener?.("change", applyAppTheme);
 }
 
 async function main() {
+  applyAppTheme();
   load();
   applySettings();
   bindUi();
+  clearApiAlert();
   summary();
   setStatus("Idle", "Ready.");
   log("BrahmaDeck Web loaded.");
@@ -1454,6 +2225,7 @@ async function main() {
 }
 
 main();
+
 </script>
 </body>
 </html>
