@@ -184,6 +184,33 @@
       font-size: 12px;
       font-weight: 700;
     }
+    .api-state {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .api-panel {
+      margin-top: 12px;
+    }
+    .advanced {
+      margin-top: 10px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 10px 12px;
+      background: #fff;
+    }
+    .advanced > summary {
+      cursor: pointer;
+      color: var(--muted);
+      font-weight: 700;
+      list-style: none;
+    }
+    .advanced > summary::-webkit-details-marker { display: none; }
+    .advanced-content {
+      margin-top: 12px;
+    }
     .hidden { position: fixed; left: -10000px; top: -10000px; opacity: 0; pointer-events: none; }
     @media (max-width: 1050px) {
       .app { grid-template-columns: 1fr; }
@@ -195,31 +222,38 @@
 <div class="app">
   <aside class="sidebar">
     <h1>BrahmaDeck Web</h1>
-    <p class="small">Static browser rewrite. Generate slides with Gemini, then export PPTX and PDF locally.</p>
+    <p class="small">By Dr. Bishnu Goswami. https://bishnu-goswami.github.io/BrahmaDeckWeb</p>
 
     <div class="panel">
       <div class="section">AI</div>
-      <div class="field">
-        <label>Gemini API key</label>
-        <input id="apiKey" type="password" placeholder="AIza..." />
+      <div class="api-state">
+        <span id="apiStatus" class="pill">API key not saved</span>
+        <button id="changeApiBtn" class="btn secondary" type="button">Change API key</button>
       </div>
-      <div class="field">
-        <label>Model</label>
-        <select id="model">
-          <option value="gemini-3-flash-preview">gemini-3-flash-preview</option>
-          <option value="gemini-2.5-flash">gemini-2.5-flash</option>
-          <option value="gemini-3.1-pro-preview">gemini-3.1-pro-preview</option>
-        </select>
+
+      <div id="apiPanel" class="panel api-panel hidden">
+        <div class="field">
+          <label>Gemini API key</label>
+          <input id="apiKey" type="password" placeholder="AIza..." autocomplete="off" />
+        </div>
+        <div class="row">
+          <button id="saveApiBtn" class="btn" type="button">Save API key</button>
+          <button id="hideApiBtn" class="btn secondary" type="button">Hide</button>
+        </div>
       </div>
+
       <div class="field">
         <label>Topic</label>
         <textarea id="topic" placeholder="Enter a research topic, lecture title, or chapter name..."></textarea>
+      </div>
+      <div class="field">
+        <label>Additional instructions</label>
+        <textarea id="extraInstructions" placeholder="Add any special directions for Gemini. These will guide generation but will not appear in the exported PPTX or DOCX."></textarea>
       </div>
       <div class="row">
         <button id="generateBtn" class="btn">Generate slides</button>
         <button id="clearBtn" class="btn secondary">Clear</button>
       </div>
-      <p class="small" style="margin-top:8px">The browser SDK is initialized with the API key directly, and the model returns structured JSON using JSON schema. citeturn444940view0turn939094view2turn891085view0</p>
     </div>
 
     <div class="panel">
@@ -277,9 +311,12 @@
           <label>Auto export</label>
           <div class="checkrow">
             <label class="check"><input id="autoPptx" type="checkbox" checked />PPTX</label>
-            <label class="check"><input id="autoPdf" type="checkbox" checked />PDF</label>
+            <label class="check"><input id="autoDocx" type="checkbox" checked />DOCX</label>
           </div>
         </div>
+      </div>
+      <div class="row" style="margin-top:-2px">
+        <button id="randomizeBtn" class="btn secondary" type="button">Randomize theme &amp; font</button>
       </div>
       <div class="field">
         <label>Diagram types</label>
@@ -288,17 +325,21 @@
           <label class="check"><input id="typeBoxes" type="checkbox" checked />Important words boxes</label>
         </div>
       </div>
-      <div class="field">
-        <label>Output</label>
-        <div class="checkrow">
-          <label class="check"><input id="openPdf" type="checkbox" checked />Open PDF in tab</label>
+
+      <details class="advanced">
+        <summary>Advanced settings</summary>
+        <div class="advanced-content">
+          <div class="field">
+            <label>Model</label>
+            <select id="model">
+              <option value="gemini-3-flash-preview">gemini-3-flash-preview</option>
+              <option value="gemini-2.5-flash">gemini-2.5-flash</option>
+              <option value="gemini-3.1-pro-preview">gemini-3.1-pro-preview</option>
+            </select>
+          </div>
         </div>
-      </div>
-      <div class="tagline">
-        <span class="tag">Static site</span>
-        <span class="tag">No server required</span>
-        <span class="tag">PPTX + PDF export</span>
-      </div>
+      </details>
+
     </div>
   </aside>
 
@@ -312,7 +353,7 @@
         </div>
         <div class="row">
           <button id="exportPptxBtn" class="btn secondary" disabled>Export PPTX</button>
-          <button id="exportPdfBtn" class="btn secondary" disabled>Export PDF</button>
+          <button id="exportDocxBtn" class="btn secondary" disabled>Export DOCX</button>
         </div>
       </div>
       <div id="status" class="status"><span class="pill">Idle</span><span id="statusText">Ready.</span></div>
@@ -336,9 +377,21 @@
 <script type="module">
 import { GoogleGenAI } from "https://esm.sh/@google/genai?bundle";
 import PptxGenJS from "https://esm.sh/pptxgenjs?bundle";
-import { jsPDF } from "https://esm.sh/jspdf?bundle";
+import {
+  Document,
+  Packer,
+  Paragraph,
+  TextRun,
+  Table,
+  TableRow,
+  TableCell,
+  WidthType,
+  AlignmentType,
+  HeadingLevel,
+  BorderStyle
+} from "https://esm.sh/docx?bundle";
 
-const STORAGE_KEY = "brahmadeck-web-settings-v1";
+const STORAGE_KEY = "brahmadeck-web-settings-v2";
 const SLIDE_W = 1600;
 const SLIDE_H = 900;
 const PPTX_W = 13.333;
@@ -351,7 +404,30 @@ const THEMES = {
   "Green Board": { bg: "EEF8F0", title: "184E3D", body: "183024", accent: "2E8B57", body_fill: "FBFFF9", sidebar: "E0F1E6", title_font: "Georgia", body_font: "Noto Sans" },
   "Sepia Seminar": { bg: "FBF4E9", title: "5A4322", body: "3A2E22", accent: "9A6A2F", body_fill: "FFF9F0", sidebar: "F5EBDD", title_font: "Times New Roman", body_font: "Noto Sans" },
   "Slate Lecture": { bg: "F2F5F9", title: "25364B", body: "283548", accent: "51657A", body_fill: "FFFFFF", sidebar: "E6EBF2", title_font: "Aptos Display", body_font: "Noto Sans" },
-  "Dark Lecture": { bg: "0F172A", title: "F8FAFC", body: "E2E8F0", accent: "38BDF8", body_fill: "111827", sidebar: "1E293B", title_font: "Aptos Display", body_font: "Noto Sans" }
+  "Dark Lecture": { bg: "0F172A", title: "F8FAFC", body: "E2E8F0", accent: "38BDF8", body_fill: "111827", sidebar: "1E293B", title_font: "Aptos Display", body_font: "Noto Sans" },
+  "Coral Notes": { bg: "FFF6F4", title: "7A2E2A", body: "33201F", accent: "E76F51", body_fill: "FFFFFF", sidebar: "FFE7E0", title_font: "Georgia", body_font: "Noto Sans" },
+  "Violet Archive": { bg: "F7F4FF", title: "4B367C", body: "2F2544", accent: "8B5CF6", body_fill: "FFFFFF", sidebar: "ECE3FF", title_font: "Cambria", body_font: "Noto Sans" },
+  "Amber Study": { bg: "FFF9EC", title: "7C4A12", body: "3B2A16", accent: "D97706", body_fill: "FFFFFF", sidebar: "FCECC8", title_font: "Trebuchet MS", body_font: "Noto Sans" },
+  "Mint Lab": { bg: "F2FFF9", title: "145A46", body: "18352E", accent: "10B981", body_fill: "FFFFFF", sidebar: "DDF7EA", title_font: "Aptos Display", body_font: "Noto Sans" },
+  "Indigo Hall": { bg: "EEF2FF", title: "312E81", body: "1F2A44", accent: "6366F1", body_fill: "FFFFFF", sidebar: "DDE3FF", title_font: "Arial", body_font: "Noto Sans" },
+  "Rose Paper": { bg: "FFF4F7", title: "7F1D45", body: "351A28", accent: "E11D48", body_fill: "FFFFFF", sidebar: "FFE1EB", title_font: "Palatino Linotype", body_font: "Noto Sans" },
+  "Forest Quiet": { bg: "F1FAF3", title: "174B2D", body: "203326", accent: "2F855A", body_fill: "FFFFFF", sidebar: "DCF0E0", title_font: "Georgia", body_font: "Noto Sans" },
+  "Ocean Light": { bg: "F0FBFF", title: "174E72", body: "223140", accent: "0EA5E9", body_fill: "FFFFFF", sidebar: "D7F2FF", title_font: "Aptos Display", body_font: "Noto Sans" },
+  "Cocoa Draft": { bg: "FCF7F2", title: "5B3D2E", body: "34241D", accent: "8B5E34", body_fill: "FFFFFF", sidebar: "F1E1D3", title_font: "Times New Roman", body_font: "Noto Sans" },
+  "Midnight Slate": { bg: "111827", title: "F9FAFB", body: "E5E7EB", accent: "94A3B8", body_fill: "1F2937", sidebar: "1E293B", title_font: "Aptos Display", body_font: "Noto Sans" },
+  "Sunlit Notes": { bg: "FFFDF2", title: "6B4F00", body: "332B18", accent: "F59E0B", body_fill: "FFFFFF", sidebar: "FFF0B8", title_font: "Trebuchet MS", body_font: "Noto Sans" },
+  "Arctic Brief": { bg: "F7FBFF", title: "1E3A5F", body: "223144", accent: "60A5FA", body_fill: "FFFFFF", sidebar: "E4F0FF", title_font: "Calibri", body_font: "Noto Sans" },
+  "Plum Forum": { bg: "FAF4FF", title: "5B2C6F", body: "321E3B", accent: "A855F7", body_fill: "FFFFFF", sidebar: "F0E2FF", title_font: "Cambria", body_font: "Noto Sans" },
+  "Emerald Board": { bg: "F1FFF7", title: "14532D", body: "1F3326", accent: "059669", body_fill: "FFFFFF", sidebar: "DDF8E9", title_font: "Georgia", body_font: "Noto Sans" },
+  "Sandstone": { bg: "FFF9F1", title: "6B4E2E", body: "3A2B1D", accent: "B08968", body_fill: "FFFFFF", sidebar: "F3E2D4", title_font: "Times New Roman", body_font: "Noto Sans" },
+  "Charcoal Pro": { bg: "F4F6F8", title: "1F2937", body: "1F2937", accent: "334155", body_fill: "FFFFFF", sidebar: "E5E7EB", title_font: "Arial", body_font: "Noto Sans" },
+  "Sky Review": { bg: "EFF8FF", title: "1D4ED8", body: "1F2A44", accent: "38BDF8", body_fill: "FFFFFF", sidebar: "DCEEFF", title_font: "Aptos Display", body_font: "Noto Sans" },
+  "Turquoise Lab": { bg: "F0FFFD", title: "0F766E", body: "1F3B3A", accent: "14B8A6", body_fill: "FFFFFF", sidebar: "D6FBF8", title_font: "Trebuchet MS", body_font: "Noto Sans" },
+  "Ruby Lecture": { bg: "FFF3F4", title: "991B1B", body: "36181A", accent: "EF4444", body_fill: "FFFFFF", sidebar: "FFD8DC", title_font: "Cambria", body_font: "Noto Sans" },
+  "Lemon Paper": { bg: "FFFEF0", title: "6B5E00", body: "2D2A18", accent: "EAB308", body_fill: "FFFFFF", sidebar: "FFF4B8", title_font: "Georgia", body_font: "Noto Sans" },
+  "Orchid Reading": { bg: "FCF4FF", title: "6B21A8", body: "331F49", accent: "D946EF", body_fill: "FFFFFF", sidebar: "F1DBFF", title_font: "Palatino Linotype", body_font: "Noto Sans" },
+  "Teal Academy": { bg: "F1FFFB", title: "155E75", body: "1F3941", accent: "0F766E", body_fill: "FFFFFF", sidebar: "DDF8F2", title_font: "Aptos Display", body_font: "Noto Sans" },
+  "Bronze Scroll": { bg: "FBF5ED", title: "7A4E1A", body: "3E2D1B", accent: "CD7F32", body_fill: "FFFFFF", sidebar: "F3E2C7", title_font: "Times New Roman", body_font: "Noto Sans" }
 };
 
 const FONT_PRESETS = {
@@ -360,12 +436,38 @@ const FONT_PRESETS = {
   "Classic Serif": { title_font: "Times New Roman", body_font: "Times New Roman" },
   "Modern Sans": { title_font: "Arial", body_font: "Arial" },
   "Lecture Sans": { title_font: "Trebuchet MS", body_font: "Trebuchet MS" },
-  "Mono Notes": { title_font: "Consolas", body_font: "Consolas" }
+  "Mono Notes": { title_font: "Consolas", body_font: "Consolas" },
+  "Cambria Study": { title_font: "Cambria", body_font: "Cambria" },
+  "Calibri Clean": { title_font: "Calibri", body_font: "Calibri" },
+  "Aptos Present": { title_font: "Aptos", body_font: "Aptos" },
+  "Aptos Display": { title_font: "Aptos Display", body_font: "Aptos Display" },
+  "Verdana Screen": { title_font: "Verdana", body_font: "Verdana" },
+  "Tahoma Type": { title_font: "Tahoma", body_font: "Tahoma" },
+  "Gill Sans": { title_font: "Gill Sans", body_font: "Gill Sans" },
+  "Franklin Gothic": { title_font: "Franklin Gothic Medium", body_font: "Franklin Gothic Medium" },
+  "Palatino": { title_font: "Palatino Linotype", body_font: "Palatino Linotype" },
+  "Book Antiqua": { title_font: "Book Antiqua", body_font: "Book Antiqua" },
+  "Century Gothic": { title_font: "Century Gothic", body_font: "Century Gothic" },
+  "Helvetica": { title_font: "Helvetica", body_font: "Helvetica" },
+  "Optima": { title_font: "Optima", body_font: "Optima" },
+  "Didot": { title_font: "Didot", body_font: "Didot" },
+  "Garamond": { title_font: "Garamond", body_font: "Garamond" },
+  "Cormorant": { title_font: "Cormorant Garamond", body_font: "Cormorant Garamond" },
+  "Lato": { title_font: "Lato", body_font: "Lato" },
+  "Open Sans": { title_font: "Open Sans", body_font: "Open Sans" },
+  "Roboto": { title_font: "Roboto", body_font: "Roboto" },
+  "Source Sans": { title_font: "Source Sans Pro", body_font: "Source Sans Pro" },
+  "Lucida": { title_font: "Lucida Sans Unicode", body_font: "Lucida Sans Unicode" },
+  "Courier": { title_font: "Courier New", body_font: "Courier New" },
+  "Monaco": { title_font: "Monaco", body_font: "Monaco" },
+  "Noto Serif": { title_font: "Noto Serif", body_font: "Noto Serif" },
+  "Noto Sans Bengali": { title_font: "Noto Sans Bengali", body_font: "Noto Sans Bengali" }
 };
+
 
 const els = Object.fromEntries([...document.querySelectorAll("[id]")].map(el => [el.id, el]));
 const ctx = els.renderCanvas.getContext("2d");
-const state = { slides: [], topic: "", busy: false, settings: {} };
+const state = { slides: [], pdfDoc: null, topic: "", busy: false, settings: {}, currentRequest: null };
 
 for (const key of Object.keys(THEMES)) els.theme.add(new Option(key, key));
 for (const key of Object.keys(FONT_PRESETS)) els.font.add(new Option(key, key));
@@ -404,6 +506,7 @@ function collect() {
     apiKey: els.apiKey.value.trim(),
     model: els.model.value,
     topic: els.topic.value.trim(),
+    extraInstructions: els.extraInstructions.value.trim(),
     language: els.language.value,
     level: els.level.value,
     density: Number(els.density.value),
@@ -412,10 +515,9 @@ function collect() {
     theme: els.theme.value,
     font: els.font.value,
     autoPptx: els.autoPptx.checked,
-    autoPdf: els.autoPdf.checked,
+    autoDocx: els.autoDocx.checked,
     typeTable: els.typeTable.checked,
     typeBoxes: els.typeBoxes.checked,
-    openPdf: els.openPdf.checked,
   };
 }
 
@@ -433,10 +535,35 @@ function save() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state.settings));
 }
 
+function updateApiUI() {
+  const hasKey = Boolean((els.apiKey?.value || "").trim());
+  els.apiStatus.textContent = hasKey ? "API key saved locally" : "API key not saved";
+  els.changeApiBtn.textContent = hasKey ? "Change API key" : "Add API key";
+  if (hasKey && !els.apiPanel.dataset.forceOpen) {
+    els.apiPanel.classList.add("hidden");
+  } else {
+    els.apiPanel.classList.remove("hidden");
+  }
+}
+
+function openApiPanel() {
+  els.apiPanel.dataset.forceOpen = "1";
+  els.apiPanel.classList.remove("hidden");
+  els.apiKey.focus();
+}
+
+function closeApiPanel() {
+  delete els.apiPanel.dataset.forceOpen;
+  if (els.apiKey.value.trim()) {
+    els.apiPanel.classList.add("hidden");
+  }
+}
+
 function applySettings() {
   els.apiKey.value = state.settings.apiKey || "";
   els.model.value = state.settings.model || "gemini-3-flash-preview";
   els.topic.value = state.settings.topic || "";
+  els.extraInstructions.value = state.settings.extraInstructions || "";
   els.language.value = state.settings.language || "English";
   els.level.value = state.settings.level || "High School";
   els.density.value = String(state.settings.density ?? 2);
@@ -445,11 +572,11 @@ function applySettings() {
   els.theme.value = state.settings.theme || "Academic Default";
   els.font.value = state.settings.font || "Academic Sans";
   els.autoPptx.checked = state.settings.autoPptx ?? true;
-  els.autoPdf.checked = state.settings.autoPdf ?? true;
+  els.autoDocx.checked = state.settings.autoDocx ?? true;
   els.typeTable.checked = state.settings.typeTable ?? true;
   els.typeBoxes.checked = state.settings.typeBoxes ?? true;
-  els.openPdf.checked = state.settings.openPdf ?? true;
   document.documentElement.style.setProperty("--accent", `#${(THEMES[els.theme.value] || THEMES["Academic Default"]).accent}`);
+  updateApiUI();
 }
 
 function rr(c, x, y, w, h, r, fill, stroke, lw = 1) {
@@ -786,8 +913,74 @@ Slides to generate: ${req.slides}
 Approximate words per slide: ${req.words}
 
 Return EXACTLY ${req.slides} slide objects as valid JSON.
-Each slide must include title, body, diagram_brief, and diagram_specs (one table, one boxes layout).
+Each slide must include title, body, diagram_brief, and diagram_specs.
+Keep the language classroom-friendly and visually organized.
 Reply with JSON only.
+`.trim();
+}
+
+function nextLevel(level) {
+  const order = ["Kid (Simple)", "High School", "Graduate", "Postgraduate (PhD)"];
+  const idx = order.indexOf(level);
+  return order[Math.min(Math.max(idx, 0) + 1, order.length - 1)];
+}
+
+function buildPdfSchema(sectionCount) {
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: ["title", "subtitle", "summary", "sections", "closing"],
+    properties: {
+      title: { type: "string" },
+      subtitle: { type: "string" },
+      summary: { type: "string" },
+      closing: { type: "string" },
+      sections: {
+        type: "array",
+        minItems: sectionCount,
+        maxItems: sectionCount,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["heading", "overview", "bullets", "example", "mini_table"],
+          properties: {
+            heading: { type: "string" },
+            overview: { type: "string" },
+            bullets: { type: "array", items: { type: "string" }, minItems: 3, maxItems: 5 },
+            example: { type: "string" },
+            mini_table: {
+              type: "array",
+              minItems: 2,
+              maxItems: 5,
+              items: {
+                type: "array",
+                items: { type: "string" },
+                minItems: 3,
+                maxItems: 3
+              }
+            }
+          }
+        }
+      }
+    }
+  };
+}
+
+function buildPdfPrompt(req) {
+  return `
+Topic: ${req.topic}
+Language: ${req.language}
+Target level: ${nextLevel(req.level)}
+Textual density: ${Math.min(4, Number(req.density) + 1)}
+Sections to generate: ${req.slides}
+
+Additional instructions from the user: ${req.extraInstructions || "None"}
+
+Create a detailed document for DOCX export. It should be slightly more advanced and more detailed than the slide deck.
+Do not use headings like "Lecture notes".
+Write in polished prose with a brief summary, ${req.slides} detailed sections, and a short closing paragraph.
+Each section should include heading, overview in full sentences, 3-5 bullet points, one concrete example, and a compact 3-column mini_table.
+Return JSON only.
 `.trim();
 }
 
@@ -800,12 +993,118 @@ function coerceSlides(parsed, req) {
   return fallback(req);
 }
 
+function fallbackPdfDoc(req) {
+  const steps = ["Introduction", "Foundations", "Mechanisms", "Applications", "Interpretation", "Conclusion"];
+  return {
+    title: req.topic,
+    subtitle: `${req.language} • ${nextLevel(req.level)} • Detailed document`,
+    summary: `${req.topic} explained in a fuller, document-style format with slightly higher detail than the slide deck.`,
+    sections: Array.from({ length: req.slides }, (_, i) => ({
+      heading: `${steps[i % steps.length]} for ${req.topic}`,
+      overview: `${req.topic} in ${req.language}, written for ${nextLevel(req.level).toLowerCase()} study. The discussion goes beyond the slide version and adds context, nuance, and examples.`,
+      bullets: [
+        `Core idea: ${req.topic} at a deeper conceptual level.`,
+        `Why it matters in ${req.language} study and classroom discussion.`,
+        `A practical point or example that supports understanding.`
+      ],
+      example: `For example, teachers or readers can connect this section of ${req.topic} to a familiar real-world case or classroom situation.`,
+      mini_table: [
+        ["Aspect", "Focus", "Use"],
+        ["Concept", "Main meaning", "Frame the topic"],
+        ["Example", "Concrete case", "Make it memorable"],
+        ["Application", "Teaching or study use", "Transfer the idea"]
+      ]
+    })),
+    closing: `In summary, ${req.topic} becomes easier to explain when the core ideas, examples, and applications are connected in one document.`
+  };
+}
+
+function coercePdfDoc(parsed, req) {
+  if (parsed && typeof parsed === "object") {
+    const sections = Array.isArray(parsed.sections) ? parsed.sections : [];
+    return {
+      title: String(parsed.title || req.topic || "Document"),
+      subtitle: String(parsed.subtitle || `${req.language} • ${req.level} • Detailed document`),
+      summary: String(parsed.summary || `${req.topic} overview.`),
+      sections: sections.length ? sections : fallbackPdfDoc(req).sections,
+      closing: String(parsed.closing || `This closes the detailed discussion of ${req.topic}.`)
+    };
+  }
+  return fallbackPdfDoc(req);
+}
+
+function cleanResponseText(text) {
+  let t = String(text || "").trim();
+  t = t.replace(/^```(?:json)?\s*/i, "").replace(/```$/i, "").trim();
+  const start = t.indexOf("{");
+  const arrStart = t.indexOf("[");
+  if (start === -1 && arrStart === -1) return t;
+  if (arrStart !== -1 && (start === -1 || arrStart < start)) {
+    const end = t.lastIndexOf("]");
+    return end > arrStart ? t.slice(arrStart, end + 1).trim() : t.slice(arrStart).trim();
+  }
+  const end = t.lastIndexOf("}");
+  return end > start ? t.slice(start, end + 1).trim() : t.slice(start).trim();
+}
+
+function extractJsonPayload(response) {
+  const candidates = [];
+  if (response?.text) candidates.push(response.text);
+  const parts = response?.candidates?.[0]?.content?.parts || [];
+  for (const part of parts) {
+    if (typeof part?.text === "string") candidates.push(part.text);
+  }
+  for (const candidate of candidates) {
+    const cleaned = cleanResponseText(candidate);
+    if (cleaned) {
+      try { return JSON.parse(cleaned); } catch {}
+    }
+  }
+  throw new Error("Model response did not contain valid JSON.");
+}
+
+function buildRequest() {
+  const settings = collect();
+  return {
+    topic: settings.topic,
+    language: settings.language,
+    level: settings.level,
+    density: settings.density,
+    slides: Math.max(3, Math.min(30, Number(settings.slides) || 6)),
+    words: Math.max(25, Math.min(150, Number(settings.words) || 70)),
+    model: settings.model
+  };
+}
+
+async function generatePdfDoc(req) {
+  setStatus("Working", "Generating detailed DOCX document...");
+  log(`Generating DOCX document for "${req.topic}" with a separate prompt.`);
+  try {
+    const ai = new GoogleGenAI({ apiKey: state.settings.apiKey });
+    const response = await ai.models.generateContent({
+      model: req.model,
+      contents: buildPdfPrompt(req),
+      config: {
+        responseMimeType: "application/json",
+        responseJsonSchema: buildPdfSchema(req.slides)
+      }
+    });
+    const parsed = extractJsonPayload(response);
+    state.pdfDoc = coercePdfDoc(parsed, req);
+    log("DOCX document JSON received.");
+  } catch (err) {
+    log(`DOCX document generation failed, using fallback: ${err?.message || err}`);
+    state.pdfDoc = fallbackPdfDoc(req);
+  }
+  return state.pdfDoc;
+}
+
 async function generateSlides() {
   if (state.busy) return;
   state.busy = true;
   els.generateBtn.disabled = true;
   els.exportPptxBtn.disabled = true;
-  els.exportPdfBtn.disabled = true;
+  els.exportDocxBtn.disabled = true;
 
   try {
     state.settings = collect();
@@ -814,22 +1113,16 @@ async function generateSlides() {
       return;
     }
     if (!state.settings.apiKey) {
-      setStatus("Error", "Enter a Gemini API key.");
+      openApiPanel();
+      setStatus("Error", "Save a Gemini API key first.");
       return;
     }
 
     save();
     state.topic = state.settings.topic;
 
-    const req = {
-      topic: state.topic,
-      language: state.settings.language,
-      level: state.settings.level,
-      density: state.settings.density,
-      slides: Math.max(3, Math.min(30, Number(state.settings.slides) || 6)),
-      words: Math.max(25, Math.min(150, Number(state.settings.words) || 70)),
-      model: state.settings.model
-    };
+    const req = buildRequest();
+    state.currentRequest = req;
 
     setStatus("Working", "Generating slide JSON with Gemini...");
     log(`Generating ${req.slides} slides for "${req.topic}" using ${req.model}.`);
@@ -845,10 +1138,10 @@ async function generateSlides() {
           responseJsonSchema: buildSchema(req.slides)
         }
       });
-      parsed = JSON.parse(String(response.text || "").trim());
-      log("Gemini JSON received.");
+      parsed = extractJsonPayload(response);
+      log("Slide JSON received.");
     } catch (err) {
-      log(`AI generation failed, using fallback: ${err?.message || err}`);
+      log(`Slide generation failed, using fallback: ${err?.message || err}`);
       parsed = fallback(req);
     }
 
@@ -870,14 +1163,16 @@ async function generateSlides() {
       });
     }
 
+    await generatePdfDoc(req);
+
     summary();
     els.exportPptxBtn.disabled = false;
-    els.exportPdfBtn.disabled = false;
-    setStatus("Ready", "Slides generated.");
+    els.exportDocxBtn.disabled = false;
+    setStatus("Ready", "Slides and DOCX document generated.");
     log(`Prepared ${state.slides.length} slides.`);
 
     if (state.settings.autoPptx) await exportPptx();
-    if (state.settings.autoPdf) await exportPdf();
+    if (state.settings.autoDocx) await exportPdf();
   } catch (err) {
     setStatus("Error", err?.message || String(err));
     log(`ERROR: ${err?.stack || err}`);
@@ -911,43 +1206,195 @@ async function exportPptx() {
 
 async function exportPdf() {
   if (!state.slides.length) return;
-  setStatus("Working", "Building PDF...");
+  if (!state.pdfDoc || state.currentRequest?.topic !== state.topic) {
+    const req = state.currentRequest || buildRequest();
+    state.pdfDoc = await generatePdfDoc(req);
+  }
 
-  const pdf = new jsPDF({
-    orientation: "landscape",
-    unit: "pt",
-    format: [PPTX_W * 72, PPTX_H * 72],
-    compress: true
+  setStatus("Working", "Building DOCX document...");
+
+  const req = state.currentRequest || buildRequest();
+  const theme = THEMES[els.theme.value] || THEMES["Academic Default"];
+  const titleFont = FONT_PRESETS[els.font.value]?.title_font || theme.title_font || "Noto Sans";
+  const bodyFont = FONT_PRESETS[els.font.value]?.body_font || theme.body_font || "Noto Sans";
+
+  const paragraph = (text, options = {}) => new Paragraph({
+    children: [new TextRun({
+      text: String(text || ""),
+      bold: Boolean(options.bold),
+      italics: Boolean(options.italics),
+      size: options.size ?? 22,
+      font: options.font || bodyFont,
+      color: options.color || theme.body,
+    })],
+    spacing: options.spacing || {},
+    alignment: options.alignment,
+    heading: options.heading,
+    bullet: options.bullet,
+    pageBreakBefore: options.pageBreakBefore,
   });
 
-  const width = PPTX_W * 72;
-  const height = PPTX_H * 72;
+  const tableCell = (text, bold = false) => new TableCell({
+    children: [new Paragraph({
+      children: [new TextRun({
+        text: String(text || ""),
+        bold,
+        size: 20,
+        font: bodyFont,
+        color: theme.body,
+      })],
+      spacing: { after: 60 },
+    })],
+  });
 
-  for (let i = 0; i < state.slides.length; i++) {
-    const img = renderSlide(state.slides[i], i);
-    if (i > 0) pdf.addPage([width, height], "landscape");
-    pdf.addImage(img, "PNG", 0, 0, width, height, undefined, "FAST");
+  const sectionChildren = [];
+  sectionChildren.push(new Paragraph({
+    heading: HeadingLevel.TITLE,
+    alignment: AlignmentType.CENTER,
+    spacing: { after: 120 },
+    children: [new TextRun({
+      text: state.pdfDoc.title || req.topic,
+      bold: true,
+      size: 34,
+      font: titleFont,
+      color: theme.title,
+    })],
+  }));
+  sectionChildren.push(paragraph(state.pdfDoc.subtitle || `${req.language} • ${req.level} • Detailed document`, {
+    alignment: AlignmentType.CENTER,
+    size: 20,
+    font: bodyFont,
+    color: theme.accent,
+    spacing: { after: 180 },
+  }));
+  sectionChildren.push(paragraph(state.pdfDoc.summary, {
+    size: 22,
+    font: bodyFont,
+    color: theme.body,
+    spacing: { after: 120 },
+  }));
+
+  for (let i = 0; i < state.pdfDoc.sections.length; i++) {
+    const section = state.pdfDoc.sections[i];
+    sectionChildren.push(new Paragraph({
+      heading: HeadingLevel.HEADING_1,
+      spacing: { before: 180, after: 100 },
+      children: [new TextRun({
+        text: `${i + 1}. ${String(section.heading || `Section ${i + 1}`)}`,
+        bold: true,
+        size: 26,
+        font: titleFont,
+        color: theme.title,
+      })],
+    }));
+    sectionChildren.push(paragraph(section.overview, { size: 22, spacing: { after: 80 } }));
+    for (const item of section.bullets || []) {
+      sectionChildren.push(new Paragraph({
+        bullet: { level: 0 },
+        children: [new TextRun({ text: String(item || ""), size: 20, font: bodyFont, color: theme.body })],
+        spacing: { after: 40 },
+      }));
+    }
+    sectionChildren.push(paragraph(`Example: ${String(section.example || "")}`, {
+      bold: true,
+      size: 20,
+      spacing: { after: 80 },
+      font: bodyFont,
+      color: theme.accent,
+    }));
+
+    const tableRows = [
+      new TableRow({
+        children: [
+          tableCell("Aspect", true),
+          tableCell("Detail", true),
+          tableCell("Note", true),
+        ],
+      }),
+      ...(section.mini_table || []).map((row, idx) => new TableRow({
+        children: [
+          tableCell(Array.isArray(row) ? row[0] : ""),
+          tableCell(Array.isArray(row) ? row[1] : ""),
+          tableCell(Array.isArray(row) ? row[2] : ""),
+        ],
+      }))
+    ];
+
+    sectionChildren.push(new Table({
+      rows: tableRows,
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      borders: {
+        top: { style: BorderStyle.SINGLE, size: 1, color: theme.line || "D6DEEB" },
+        bottom: { style: BorderStyle.SINGLE, size: 1, color: theme.line || "D6DEEB" },
+        left: { style: BorderStyle.SINGLE, size: 1, color: theme.line || "D6DEEB" },
+        right: { style: BorderStyle.SINGLE, size: 1, color: theme.line || "D6DEEB" },
+        insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: theme.line || "D6DEEB" },
+        insideVertical: { style: BorderStyle.SINGLE, size: 1, color: theme.line || "D6DEEB" },
+      },
+    }));
+
+    if (i < state.pdfDoc.sections.length - 1) {
+      sectionChildren.push(new Paragraph({ text: "", spacing: { after: 140 } }));
+    }
   }
 
-  const file = filename(state.topic, "pdf");
-  if (els.openPdf.checked) {
-    const blob = pdf.output("blob");
-    const url = URL.createObjectURL(blob);
-    window.open(url, "_blank", "noopener,noreferrer");
-    setTimeout(() => URL.revokeObjectURL(url), 30000);
-  }
-  pdf.save(file);
-  log(`PDF exported: ${file}`);
-  setStatus("Ready", `PDF exported: ${file}`);
+  sectionChildren.push(paragraph(state.pdfDoc.closing, {
+    size: 22,
+    spacing: { before: 120 },
+    font: bodyFont,
+    color: theme.body,
+  }));
+
+  const doc = new Document({
+    styles: {
+      default: {
+        document: {
+          run: {
+            font: bodyFont,
+            size: 22,
+          },
+        },
+      },
+    },
+    sections: [{
+      properties: {
+        page: {
+          margin: {
+            top: 720,
+            right: 720,
+            bottom: 720,
+            left: 720,
+          },
+        },
+      },
+      children: sectionChildren,
+    }],
+  });
+
+  const blob = await Packer.toBlob(doc);
+  const file = filename(req.topic, "docx");
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = file;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
+
+  log(`DOCX exported: ${file}`);
+  setStatus("Ready", `DOCX exported: ${file}`);
 }
 
-async function clearAll() {
+function clearAll() {
   state.slides = [];
+  state.pdfDoc = null;
+  state.currentRequest = null;
   state.topic = "";
   els.topic.value = "";
   summary();
   els.exportPptxBtn.disabled = true;
-  els.exportPdfBtn.disabled = true;
+  els.exportDocxBtn.disabled = true;
   setStatus("Idle", "Ready.");
   log("Cleared generated slides.");
 }
@@ -955,17 +1402,44 @@ async function clearAll() {
 function sync() {
   save();
   document.documentElement.style.setProperty("--accent", `#${(THEMES[els.theme.value] || THEMES["Academic Default"]).accent}`);
+  updateApiUI();
+}
+
+function randomizeThemeFont() {
+  const themeNames = Object.keys(THEMES);
+  const fontNames = Object.keys(FONT_PRESETS);
+  const nextTheme = themeNames[Math.floor(Math.random() * themeNames.length)];
+  const nextFont = fontNames[Math.floor(Math.random() * fontNames.length)];
+  els.theme.value = nextTheme;
+  els.font.value = nextFont;
+  document.documentElement.style.setProperty("--accent", `#${THEMES[nextTheme].accent}`);
+  save();
+  summary();
+  log(`Randomized theme to "${nextTheme}" and font to "${nextFont}".`);
 }
 
 function bindUi() {
-  for (const id of ["apiKey", "model", "topic", "language", "level", "density", "slides", "words", "theme", "font", "autoPptx", "autoPdf", "typeTable", "typeBoxes", "openPdf"]) {
+  for (const id of ["model", "topic", "extraInstructions", "language", "level", "density", "slides", "words", "theme", "font", "autoPptx", "autoDocx", "typeTable", "typeBoxes"]) {
     els[id].addEventListener("input", sync);
     els[id].addEventListener("change", sync);
   }
+  els.apiKey.addEventListener("input", updateApiUI);
   els.generateBtn.addEventListener("click", generateSlides);
   els.clearBtn.addEventListener("click", clearAll);
+  els.randomizeBtn.addEventListener("click", randomizeThemeFont);
   els.exportPptxBtn.addEventListener("click", exportPptx);
-  els.exportPdfBtn.addEventListener("click", exportPdf);
+  els.exportDocxBtn.addEventListener("click", exportPdf);
+  els.changeApiBtn.addEventListener("click", openApiPanel);
+  els.saveApiBtn.addEventListener("click", () => {
+    save();
+    closeApiPanel();
+    updateApiUI();
+    log("API key saved locally.");
+  });
+  els.hideApiBtn.addEventListener("click", () => {
+    closeApiPanel();
+    updateApiUI();
+  });
 }
 
 async function main() {
