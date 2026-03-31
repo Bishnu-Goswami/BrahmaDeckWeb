@@ -2625,16 +2625,23 @@ If the user sets a smaller value, compress aggressively while keeping the densit
 Stay close to the requested per-slide word target while still following the density rules.
 
 For Bullet Points mode:
-- Treat every newline as one complete bullet.
-- Each bullet must be a self-contained idea on exactly one line.
-- Do not split a bullet across multiple lines.
-- Do not combine multiple clauses into one bullet.
+- Emit one bullet per line using literal newline characters.
+- Never pack multiple bullets into one line, even if they are related.
+- Each bullet must be a single self-contained idea on exactly one line.
+- Do not wrap a bullet onto a second line under any circumstance.
+- Do not combine multiple clauses, sentences, or examples into one bullet.
+- Do not use semicolons, parenthetical expansions, or comma-stuffed lists to hide multiple ideas in one bullet.
 - Do not leave orphan words like "system", "processes", or "effects" on their own line.
-- If an idea is too long for one line, rewrite it shorter rather than breaking it.
+- If an idea is too long for one line, shorten or simplify it instead of wrapping it.
 - Prefer 4–5 bullets for ~30 words, 6–7 bullets for ~60 words, and 9–11 bullets for ~120 words.
-- Every bullet must appear on its own line and must not depend on the next line to complete the thought.
+- Every bullet must stand alone and must not depend on the next line to complete the thought.
+- If you are unsure whether to split into one or two bullets, split it into two bullets.
+- Output no blank lines inside the body.
 
 You are generating a slide deck, not a document.
+In Bullet Points mode, the body must read as a newline-delimited list of bullets, not a paragraph with embedded commas.
+Each bullet line should usually contain one short clause or one compact idea.
+If you cannot fit the idea cleanly on one line, rewrite it shorter rather than merging it with another bullet.
 
 TYPOGRAPHY AND LAYOUT RULES:
 
